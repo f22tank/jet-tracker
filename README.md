@@ -1,5 +1,5 @@
 # jet-tracker
 
-[logo.jpg]
+<img src="logo.jpg">
 
-A website for planespotters to log spots, photos, and review data
+A website for planespotters to log spots, photos, and review data.
