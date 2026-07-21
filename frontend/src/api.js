@@ -136,4 +136,13 @@ export function fetchOperator(operatorId) {
   return request(`/api/operators/${operatorId}`);
 }
 
+export function fetchRecentSpots(limit = 12) {
+  return request(`/api/gallery/recent?limit=${limit}`);
+}
+
+export function fetchGallerySpots({ q = "", sort = "date", order = "desc", page = 1, pageSize = 25 } = {}) {
+  const params = new URLSearchParams({ q, sort, order, page: String(page), page_size: String(pageSize) });
+  return request(`/api/gallery/spots?${params.toString()}`);
+}
+
 export { ApiError };

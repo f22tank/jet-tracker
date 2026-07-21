@@ -476,3 +476,108 @@ def resolve_photos(db: Session, resolve: schemas.PhotoResolve) -> tuple[models.S
     db.commit()
     db.refresh(spot)
     return spot, None
+
+
+# ---- gallery (home page: recent carousel + searchable/sortable/paginated table) ----
+
+
+def _spot_cover_thumbnail(spot: models.Spot) -> str | None:
+    if spot.cover_photo:
+        return spot.cover_photo.thumbnail_path or spot.cover_photo.path
+    return None
+
+
+def _operator_label_for(spot: models.Spot) -> str | None:
+    if spot.operator:
+        return spot.operator.name
+    return spot.airline or spot.unit
+
+
+def get_recent_spots(db: Session, limit: int = 12) -> list[models.Spot]:
+    """Recent = spotting date desc (Spot.date) — "what have I been catching lately,"
+    not "what have I recently logged." A backfilled old catch won't surface here even
+    if added today; it still shows in the table below. LEVER: to surface freshly-added
+    backfills instead, swap this order_by to models.Spot.created_at.desc()."""
+    return (
+        db.query(models.Spot)
+        .order_by(models.Spot.date.desc(), models.Spot.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def to_gallery_card(spot: models.Spot) -> schemas.GallerySpotCard:
+    return schemas.GallerySpotCard(
+        id=spot.id,
+        date=spot.date,
+        aircraft_identifier=spot.aircraft.identifier,
+        cover_thumbnail=_spot_cover_thumbnail(spot),
+        operator_name=_operator_label_for(spot),
+        operator_image=spot.operator.image if spot.operator else None,
+    )
+
+
+def search_spots(
+    db: Session, q: str = "", sort: str = "date", order: str = "desc", page: int = 1, page_size: int = 25
+) -> tuple[list[models.Spot], int]:
+    """Server-side search + sort + pagination over the full spot set. Search is a
+    single free-text box across reg/serial, operator, aircraft type, location, notes —
+    no faceted filters this version (deliberate, see HOME_GALLERY_BRIEF)."""
+    identifier_expr = func.coalesce(models.Aircraft.registration, models.Aircraft.serial)
+    operator_name_expr = func.coalesce(models.Operator.name, models.Spot.airline, models.Spot.unit)
+
+    query = (
+        db.query(models.Spot)
+        .join(models.Aircraft, models.Spot.aircraft_id == models.Aircraft.id)
+        .outerjoin(models.Operator, models.Spot.operator_id == models.Operator.id)
+        .outerjoin(models.Location, models.Spot.location_id == models.Location.id)
+    )
+
+    q = q.strip()
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            models.Aircraft.registration.ilike(like)
+            | models.Aircraft.serial.ilike(like)
+            | models.Aircraft.type.ilike(like)
+            | models.Operator.name.ilike(like)
+            | models.Spot.airline.ilike(like)
+            | models.Spot.unit.ilike(like)
+            | models.Location.name.ilike(like)
+            | models.Location.icao.ilike(like)
+            | models.Location.iata.ilike(like)
+            | models.Spot.notes.ilike(like)
+        )
+
+    total = query.count()
+
+    sort_map = {
+        "date": models.Spot.date,
+        "created_at": models.Spot.created_at,
+        "identifier": identifier_expr,
+        "operator": operator_name_expr,
+        "type": models.Aircraft.type,
+    }
+    sort_col = sort_map.get(sort, models.Spot.date)
+    direction = sort_col.asc() if order == "asc" else sort_col.desc()
+
+    items = (
+        query.order_by(direction, models.Spot.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return items, total
+
+
+def to_gallery_row(spot: models.Spot) -> schemas.GalleryTableRow:
+    return schemas.GalleryTableRow(
+        id=spot.id,
+        date=spot.date,
+        aircraft_identifier=spot.aircraft.identifier,
+        aircraft_type=spot.aircraft.type,
+        aircraft_category=spot.aircraft.category,
+        operator_label=_operator_label_for(spot),
+        location_label=_location_label(spot),
+        cover_thumbnail=_spot_cover_thumbnail(spot),
+    )

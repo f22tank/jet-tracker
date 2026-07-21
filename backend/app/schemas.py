@@ -306,3 +306,32 @@ class PhotoResolve(BaseModel):
         if not self.aircraft_id and not self.new_aircraft:
             raise ValueError("aircraft_id or new_aircraft is required")
         return self
+
+
+class GallerySpotCard(BaseModel):
+    """One recent-spots carousel card."""
+
+    id: int
+    date: datetime.date
+    aircraft_identifier: Optional[str] = None
+    cover_thumbnail: Optional[str] = None
+    operator_name: Optional[str] = None
+    operator_image: Optional[str] = None
+
+
+class GalleryTableRow(BaseModel):
+    id: int
+    date: datetime.date
+    aircraft_identifier: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    aircraft_category: AircraftCategory
+    operator_label: Optional[str] = None
+    location_label: str
+    cover_thumbnail: Optional[str] = None
+
+
+class GalleryTableResponse(BaseModel):
+    items: list[GalleryTableRow]
+    total: int
+    page: int
+    page_size: int

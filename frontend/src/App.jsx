@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import HomePage from "./components/HomePage.jsx";
 import LocationPage from "./components/LocationPage.jsx";
 import LocationsListPage from "./components/LocationsListPage.jsx";
 import OperatorPage from "./components/OperatorPage.jsx";
@@ -33,27 +34,29 @@ export default function App() {
   const isOperator = path.startsWith("/operator");
   const isLocation = path.startsWith("/location") && !path.startsWith("/locations");
   const isLocationsList = path.startsWith("/locations");
-  const isSpot = !isTray && !isOperator && !isLocation && !isLocationsList;
+  const isSpotPage = path.startsWith("/spot");
+  const isHome = !isTray && !isOperator && !isLocation && !isLocationsList && !isSpotPage;
 
   let page;
   if (isTray) page = <TrayPage />;
   else if (isOperator) page = <OperatorPage operatorId={getIdFromUrl()} />;
   else if (isLocation) page = <LocationPage locationId={getIdFromUrl()} />;
   else if (isLocationsList) page = <LocationsListPage />;
-  else page = <SpotPage spotId={getSpotIdFromUrl()} />;
+  else if (isSpotPage) page = <SpotPage spotId={getSpotIdFromUrl()} />;
+  else page = <HomePage />;
 
   return (
     <>
       <div className="app-nav mono">
         <a
           href="/"
-          className={isSpot ? "active" : ""}
+          className={isHome ? "active" : ""}
           onClick={(e) => {
             e.preventDefault();
             navigate("/");
           }}
         >
-          Spots
+          Home
         </a>
         <a
           href="/tray"

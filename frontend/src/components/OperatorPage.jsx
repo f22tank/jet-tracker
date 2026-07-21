@@ -115,7 +115,7 @@ export default function OperatorPage({ operatorId }) {
         </div>
         {operator.spots.length === 0 && <div className="state-msg mono">No spots linked yet.</div>}
         {operator.spots.map((entry) => (
-          <a key={entry.id} href={`/?spot=${entry.id}`} className="lrow" style={{ textDecoration: "none" }}>
+          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow" style={{ textDecoration: "none" }}>
             <span className="ld">{entry.date}</span>
             <span className="ll">
               {entry.aircraft_identifier} · {entry.aircraft_type}
