@@ -3,6 +3,7 @@ import {
   ApiError,
   fetchSpot,
   mergeSpot,
+  photoUrl,
   resolveSpotLocation,
   updateSpotDate,
   updateSpotFields,
@@ -21,6 +22,56 @@ function formatDate(iso) {
 
 function formatShort(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short" });
+}
+
+function humanize(value) {
+  if (!value) return null;
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function TypeLine({ aircraft }) {
+  const parts = [];
+  if (aircraft.category === "military") {
+    if (aircraft.variant) parts.push(<b key="variant">{aircraft.variant}</b>);
+    if (aircraft.operator) parts.push(<span key="operator">{aircraft.operator}</span>);
+    if (aircraft.home_base) parts.push(<span key="home_base">{aircraft.home_base}</span>);
+  } else if (aircraft.category === "ga") {
+    const model = [aircraft.manufacturer, aircraft.type].filter(Boolean).join(" ");
+    if (model) parts.push(<b key="model">{model}</b>);
+    if (aircraft.configuration) parts.push(<span key="configuration">{humanize(aircraft.configuration)}</span>);
+    if (aircraft.role) parts.push(<span key="role">{humanize(aircraft.role)}</span>);
+  } else {
+    if (aircraft.type) parts.push(<b key="type">{aircraft.type}</b>);
+    if (aircraft.msn)
+      parts.push(
+        <span key="msn">
+          msn <b>{aircraft.msn}</b>
+        </span>
+      );
+    if (aircraft.line_number)
+      parts.push(
+        <span key="line_number">
+          ln <b>{aircraft.line_number}</b>
+        </span>
+      );
+    if (aircraft.first_flight)
+      parts.push(
+        <span key="first_flight">
+          first flight <b>{aircraft.first_flight}</b>
+        </span>
+      );
+  }
+
+  return (
+    <div className="type-line">
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && <span className="sep">·</span>}
+          {part}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function SpotPage({ spotId: initialSpotId }) {
@@ -115,7 +166,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
               ‹ PREV{prevEntry && <span style={{ color: "var(--steel)" }}>{formatShort(prevEntry.date)}</span>}
             </button>
             <span className="pos mono">
-              {spot.aircraft.registration} / {ledger.length} spot{ledger.length === 1 ? "" : "s"}
+              {spot.aircraft.identifier} / {ledger.length} spot{ledger.length === 1 ? "" : "s"}
             </span>
             <button disabled={!nextEntry} onClick={() => nextEntry && navigateTo(nextEntry.id)}>
               {nextEntry && <span style={{ color: "var(--steel)" }}>{formatShort(nextEntry.date)}</span>}NEXT ›
@@ -127,37 +178,20 @@ export default function SpotPage({ spotId: initialSpotId }) {
       <div className="wrap">
         <header className="spot">
           <div className="reg-row">
-            <div className="reg mono">{spot.aircraft.registration}</div>
+            <div className="reg mono">{spot.aircraft.identifier}</div>
             <div className="date-block">
               <span className="dl">Spotted</span>
               <span className="d">{formatDate(spot.date)}</span>
             </div>
           </div>
-          <div className="type-line">
-            <b>{spot.aircraft.type}</b>
-            {spot.aircraft.msn && (
-              <>
-                <span className="sep">·</span>msn <b>{spot.aircraft.msn}</b>
-              </>
-            )}
-            {spot.aircraft.line_number && (
-              <>
-                <span className="sep">·</span>ln <b>{spot.aircraft.line_number}</b>
-              </>
-            )}
-            {spot.aircraft.first_flight && (
-              <>
-                <span className="sep">·</span>first flight <b>{spot.aircraft.first_flight}</b>
-              </>
-            )}
-          </div>
+          <TypeLine aircraft={spot.aircraft} />
         </header>
 
         <div className="grid">
           <div className="cell">
             {hasPhotos ? (
               <div className="cover">
-                <img src={cover.path} alt={`${spot.aircraft.registration} on approach`} />
+                <img src={photoUrl(cover.path)} alt={`${spot.aircraft.identifier} on approach`} />
                 <div className="tag mono">★ COVER</div>
                 <div className="exif mono">
                   {cover.camera && (
@@ -202,8 +236,24 @@ export default function SpotPage({ spotId: initialSpotId }) {
 
             <div className="sect">
               <h3>Details</h3>
-              <EditableField label="Airline" value={spot.airline} placeholder="add airline" onSave={(v) => saveField("airline", v)} />
-              <EditableField label="Livery" value={spot.livery} placeholder="add livery" onSave={(v) => saveField("livery", v)} />
+              {spot.aircraft.category === "military" && (
+                <>
+                  <EditableField label="Unit" value={spot.unit} placeholder="add unit" onSave={(v) => saveField("unit", v)} />
+                  <EditableField label="Markings" value={spot.markings} placeholder="add markings" onSave={(v) => saveField("markings", v)} />
+                </>
+              )}
+              {spot.aircraft.category === "ga" && (
+                <>
+                  <EditableField label="Owner" value={spot.owner} placeholder="add owner" onSave={(v) => saveField("owner", v)} />
+                  <EditableField label="Markings" value={spot.markings} placeholder="add markings" onSave={(v) => saveField("markings", v)} />
+                </>
+              )}
+              {spot.aircraft.category === "commercial" && (
+                <>
+                  <EditableField label="Airline" value={spot.airline} placeholder="add airline" onSave={(v) => saveField("airline", v)} />
+                  <EditableField label="Livery" value={spot.livery} placeholder="add livery" onSave={(v) => saveField("livery", v)} />
+                </>
+              )}
               <EditableField label="Date" value={spot.date} placeholder="set date" mono onSave={saveDate} />
               <EditableField label="Notes" value={spot.notes} placeholder="add notes" onSave={(v) => saveField("notes", v)} />
             </div>
@@ -226,7 +276,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
                   onClick={() => setCover(p.id)}
                 >
                   <div className="im">
-                    <img src={p.thumbnail_path || p.path} alt="" />
+                    <img src={photoUrl(p.thumbnail_path || p.path)} alt="" />
                   </div>
                   <div className="star">{p.id === spot.cover_photo_id ? "★" : "☆"}</div>
                   <div className="meta">
@@ -257,7 +307,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
           <div className="ledger-head">
             <h2>This Aircraft</h2>
             <span className="sub mono">
-              {spot.aircraft.registration} · caught <b>{ledger.length}×</b>
+              {spot.aircraft.identifier} · caught <b>{ledger.length}×</b>
             </span>
           </div>
           {ledger.map((entry) => (

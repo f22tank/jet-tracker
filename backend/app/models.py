@@ -1,11 +1,14 @@
 import datetime
+import enum
 
 from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -16,17 +19,66 @@ from sqlalchemy.orm import relationship
 from .database import Base
 
 
+class AircraftCategory(str, enum.Enum):
+    commercial = "commercial"
+    military = "military"
+    ga = "ga"
+
+
+class GAConfiguration(str, enum.Enum):
+    single_prop = "single_prop"
+    multi_prop = "multi_prop"
+    turboprop = "turboprop"
+    jet = "jet"
+    rotary = "rotary"
+    glider = "glider"
+
+
+class GARole(str, enum.Enum):
+    bizjet = "bizjet"
+    warbird = "warbird"
+    bush_float = "bush_float"
+    homebuilt = "homebuilt"
+    trainer = "trainer"
+    agricultural = "agricultural"
+
+
 class Aircraft(Base):
     __tablename__ = "aircraft"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    registration = Column(String, nullable=False, unique=True)
-    type = Column(String, nullable=False)
+    category = Column(Enum(AircraftCategory, name="aircraft_category"), nullable=False)
+
+    # commercial / ga
+    registration = Column(String, nullable=True)
+    type = Column(String, nullable=True)
     msn = Column(String, nullable=True)
     line_number = Column(String, nullable=True)
     first_flight = Column(Integer, nullable=True)
 
+    # military
+    serial = Column(String, nullable=True)
+    variant = Column(String, nullable=True)
+    operator = Column(String, nullable=True)
+    home_base = Column(String, nullable=True)
+
+    # ga
+    manufacturer = Column(String, nullable=True)
+    configuration = Column(Enum(GAConfiguration, name="ga_configuration"), nullable=True)
+    role = Column(Enum(GARole, name="ga_role"), nullable=True)
+
     spots = relationship("Spot", back_populates="aircraft", order_by="Spot.date")
+
+    __table_args__ = (
+        # Identity is per-category: military aircraft are keyed by serial, everyone else by reg.
+        Index("uq_aircraft_registration", "registration", unique=True, postgresql_where=registration.isnot(None)),
+        Index("uq_aircraft_serial", "serial", unique=True, postgresql_where=serial.isnot(None)),
+    )
+
+    @property
+    def identifier(self) -> str | None:
+        """The reg-equivalent for whichever category this airframe is."""
+        return self.serial if self.category == AircraftCategory.military else self.registration
 
 
 class Location(Base):
@@ -55,8 +107,14 @@ class Spot(Base):
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     date = Column(Date, nullable=False)
 
+    # commercial
     airline = Column(String, nullable=True)
     livery = Column(String, nullable=True)
+    # military / ga — per-sighting since unit/owner and paint schemes change over time
+    unit = Column(String, nullable=True)
+    owner = Column(String, nullable=True)
+    markings = Column(String, nullable=True)
+
     notes = Column(Text, nullable=True)
 
     cover_photo_id = Column(Integer, ForeignKey("photos.id", use_alter=True), nullable=True)

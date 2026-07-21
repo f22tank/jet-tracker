@@ -1,15 +1,20 @@
 import { useState } from "react";
 
+function operatorLabel(spot) {
+  return spot.airline || spot.unit || spot.owner || null;
+}
+
 function SpotSummaryCard({ label, tag, spot, date, badge }) {
+  const operator = operatorLabel(spot);
   return (
     <div className={`merge-card${badge ? ` merge-card--${badge}` : ""}`}>
       <div className="merge-card-label mono">{label}</div>
-      <div className="merge-card-reg mono">{spot.aircraft.registration}</div>
+      <div className="merge-card-reg mono">{spot.aircraft.identifier}</div>
       <div className="merge-card-date mono">{date}</div>
       <div className="merge-card-loc">{spot.location ? spot.location.name : "Unplaced"}</div>
       <div className="merge-card-meta mono">
         {spot.photos.length} photo{spot.photos.length === 1 ? "" : "s"}
-        {spot.airline ? ` · ${spot.airline}` : ""}
+        {operator ? ` · ${operator}` : ""}
       </div>
       {tag && <div className={`merge-card-tag merge-card-tag--${badge} mono`}>{tag}</div>}
     </div>
@@ -33,7 +38,7 @@ export default function CollisionDialog({ currentSpot, pendingDate, conflictingS
       <div className="dialog dialog--wide" onClick={(e) => e.stopPropagation()}>
         <h4>⚠ Date collision</h4>
         <p>
-          {currentSpot.aircraft.registration} already has a spot logged on{" "}
+          {currentSpot.aircraft.identifier} already has a spot logged on{" "}
           <b className="mono">{pendingDate}</b>. Merging will move this spot&rsquo;s photos and
           notes into the existing record, then delete this one. This can&rsquo;t be undone.
         </p>

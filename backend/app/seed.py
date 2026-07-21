@@ -6,7 +6,7 @@ Run with: python -m app.seed
 import datetime
 
 from .database import Base, SessionLocal, engine
-from .models import Aircraft, Location, Photo, Spot
+from .models import Aircraft, AircraftCategory, GAConfiguration, GARole, Location, Photo, Spot
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,13 +19,30 @@ def seed():
             return
 
         aircraft = Aircraft(
+            category=AircraftCategory.commercial,
             registration="N1234",
             type="Boeing 737-800",
             msn="30123",
             line_number="412",
             first_flight=2001,
         )
-        db.add(aircraft)
+        military = Aircraft(
+            category=AircraftCategory.military,
+            serial="86-0164",
+            type="F-16",
+            variant="F-16C",
+            operator="USAF",
+            home_base="Shaw AFB",
+        )
+        ga = Aircraft(
+            category=AircraftCategory.ga,
+            registration="N51WB",
+            type="P-51 Mustang",
+            manufacturer="North American",
+            configuration=GAConfiguration.single_prop,
+            role=GARole.warbird,
+        )
+        db.add_all([aircraft, military, ga])
         db.flush()
 
         kric = Location(icao="KRIC", iata="RIC", name="Richmond Intl", city="Richmond", country="US")
@@ -119,6 +136,41 @@ def seed():
                 date=datetime.date(2024, 11, 20),
                 location_id=None,
                 airline="United Airlines",
+            )
+        )
+
+        # Military spot: exercises unit/markings + serial/variant/operator/home_base rendering.
+        military_spot = Spot(
+            aircraft_id=military.id,
+            date=datetime.date(2026, 9, 1),
+            location_id=kric.id,
+            unit="20th Fighter Wing",
+            markings="60th Anniversary scheme",
+        )
+        db.add(military_spot)
+        db.flush()
+        military_photo = Photo(
+            spot_id=military_spot.id,
+            path="https://images.unsplash.com/photo-1521405924368-64c5b84bec60?w=1200&q=80",
+            thumbnail_path="https://images.unsplash.com/photo-1521405924368-64c5b84bec60?w=500&q=70",
+            camera="Canon R7",
+            lens="100-500mm",
+            focal_length="500mm",
+            aperture="f/6.3",
+            shutter="1/2000",
+            iso="ISO 200",
+        )
+        db.add(military_photo)
+        db.flush()
+        military_spot.cover_photo_id = military_photo.id
+
+        # GA spot: exercises owner/markings + manufacturer/configuration/role rendering.
+        db.add(
+            Spot(
+                aircraft_id=ga.id,
+                date=datetime.date(2026, 6, 10),
+                location_id=kiad.id,
+                owner="Commemorative Air Force",
             )
         )
 
