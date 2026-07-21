@@ -4,6 +4,12 @@ function operatorLabel(spot) {
   return spot.operator?.name || spot.airline || spot.unit || spot.owner || null;
 }
 
+function locationLabel(spot) {
+  if (spot.location) return spot.location.name;
+  if (spot.spot_lat != null && spot.spot_lon != null) return `${spot.spot_lat.toFixed(3)}, ${spot.spot_lon.toFixed(3)}`;
+  return "Unplaced";
+}
+
 function SpotSummaryCard({ label, tag, spot, date, badge }) {
   const operator = operatorLabel(spot);
   return (
@@ -11,7 +17,7 @@ function SpotSummaryCard({ label, tag, spot, date, badge }) {
       <div className="merge-card-label mono">{label}</div>
       <div className="merge-card-reg mono">{spot.aircraft.identifier}</div>
       <div className="merge-card-date mono">{date}</div>
-      <div className="merge-card-loc">{spot.location ? spot.location.name : "Unplaced"}</div>
+      <div className="merge-card-loc">{locationLabel(spot)}</div>
       <div className="merge-card-meta mono">
         {spot.photos.length} photo{spot.photos.length === 1 ? "" : "s"}
         {operator ? ` · ${operator}` : ""}

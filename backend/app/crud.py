@@ -23,10 +23,12 @@ def get_spot_by_aircraft_date(
 
 
 def _location_label(spot: models.Spot) -> str:
-    if spot.location is None:
-        return "Unplaced"
-    loc = spot.location
-    return f"{loc.name} · {loc.icao}" if loc.icao else loc.name
+    if spot.location is not None:
+        loc = spot.location
+        return f"{loc.name} · {loc.icao}" if loc.icao else loc.name
+    if spot.spot_lat is not None and spot.spot_lon is not None:
+        return f"{spot.spot_lat:.3f}, {spot.spot_lon:.3f}"
+    return "Unplaced"
 
 
 def build_ledger(db: Session, aircraft_id: int, current_spot_id: int) -> list[schemas.LedgerEntry]:
@@ -61,14 +63,23 @@ def to_spot_out(db: Session, spot: models.Spot) -> schemas.SpotOut:
         cover_photo_id=spot.cover_photo_id,
         aircraft=schemas.AircraftOut.model_validate(spot.aircraft),
         operator=to_operator_summary(spot.operator) if spot.operator else None,
-        location=schemas.LocationOut.model_validate(spot.location) if spot.location else None,
+        location=schemas.LocationSummary.model_validate(spot.location) if spot.location else None,
+        spot_lat=spot.spot_lat,
+        spot_lon=spot.spot_lon,
         photos=[schemas.PhotoOut.model_validate(p) for p in spot.photos],
         ledger=build_ledger(db, spot.aircraft_id, spot.id),
     )
 
 
 def update_spot_fields(db: Session, spot: models.Spot, update: schemas.SpotUpdate) -> models.Spot:
+    """A defined Location and a raw pin are mutually exclusive on a Spot: setting
+    one clears the other (never both — see LOCATION_ENTITY_BRIEF)."""
     data = update.model_dump(exclude_unset=True)
+    if "location_id" in data and data["location_id"] is not None:
+        data["spot_lat"] = None
+        data["spot_lon"] = None
+    elif ("spot_lat" in data or "spot_lon" in data) and (data.get("spot_lat") is not None or data.get("spot_lon") is not None):
+        data["location_id"] = None
     for field, value in data.items():
         setattr(spot, field, value)
     db.commit()
@@ -83,7 +94,7 @@ def update_spot_date(db: Session, spot: models.Spot, new_date: datetime.date) ->
     return spot
 
 
-def find_or_create_location(db: Session, resolve: schemas.LocationResolve) -> models.Location:
+def find_or_create_location(db: Session, resolve: schemas.LocationCreate) -> models.Location:
     location = None
     if resolve.icao:
         location = db.query(models.Location).filter(models.Location.icao == resolve.icao).first()
@@ -103,13 +114,86 @@ def find_or_create_location(db: Session, resolve: schemas.LocationResolve) -> mo
     return location
 
 
-def resolve_location(db: Session, spot: models.Spot, resolve: schemas.LocationResolve) -> models.Spot:
-    """Find-or-create a Location matching the given ICAO (or name if no ICAO) and attach it."""
-    location = find_or_create_location(db, resolve)
-    spot.location_id = location.id
-    db.commit()
-    db.refresh(spot)
-    return spot
+def get_location(db: Session, location_id: int) -> models.Location | None:
+    return db.query(models.Location).filter(models.Location.id == location_id).first()
+
+
+def find_location_by_name(db: Session, name: str) -> models.Location | None:
+    return db.query(models.Location).filter(func.lower(models.Location.name) == name.strip().lower()).first()
+
+
+def search_locations(db: Session, q: str, limit: int = 8) -> list[models.Location]:
+    q = q.strip()
+    query = db.query(models.Location)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            models.Location.name.ilike(like) | models.Location.icao.ilike(like) | models.Location.iata.ilike(like)
+        )
+    return query.order_by(models.Location.name).limit(limit).all()
+
+
+def list_locations(db: Session) -> list[schemas.LocationListEntry]:
+    """Flat list of every defined Location with its spot count — one-off raw pins
+    have no Location record and never appear here."""
+    locations = db.query(models.Location).order_by(models.Location.name).all()
+    counts = dict(
+        db.query(models.Spot.location_id, func.count(models.Spot.id))
+        .filter(models.Spot.location_id.isnot(None))
+        .group_by(models.Spot.location_id)
+        .all()
+    )
+    return [
+        schemas.LocationListEntry(
+            id=loc.id,
+            name=loc.name,
+            icao=loc.icao,
+            iata=loc.iata,
+            city=loc.city,
+            country=loc.country,
+            spot_count=counts.get(loc.id, 0),
+        )
+        for loc in locations
+    ]
+
+
+def to_location_out(db: Session, location: models.Location) -> schemas.LocationOut:
+    spots = (
+        db.query(models.Spot)
+        .filter(models.Spot.location_id == location.id)
+        .order_by(models.Spot.date.desc())
+        .all()
+    )
+    spot_entries = [
+        schemas.LocationSpotEntry(
+            id=s.id,
+            date=s.date,
+            aircraft_identifier=s.aircraft.identifier,
+            aircraft_type=s.aircraft.type,
+            operator_label=s.operator.name if s.operator else (s.airline or s.unit),
+        )
+        for s in spots
+    ]
+    dates = [s.date for s in spots]
+    stats = schemas.LocationStats(
+        spot_count=len(spots),
+        aircraft_count=len({s.aircraft_id for s in spots}),
+        operator_count=len({s.operator_id for s in spots if s.operator_id}),
+        first_date=min(dates) if dates else None,
+        last_date=max(dates) if dates else None,
+    )
+    return schemas.LocationOut(
+        id=location.id,
+        icao=location.icao,
+        iata=location.iata,
+        name=location.name,
+        city=location.city,
+        country=location.country,
+        lat=location.lat,
+        lon=location.lon,
+        spots=spot_entries,
+        stats=stats,
+    )
 
 
 def merge_spots(db: Session, source: models.Spot, target: models.Spot) -> models.Spot:
@@ -123,6 +207,11 @@ def merge_spots(db: Session, source: models.Spot, target: models.Spot) -> models
         target.livery = source.livery
     if not target.operator_id and source.operator_id:
         target.operator_id = source.operator_id
+    if not target.location_id and target.spot_lat is None and source.location_id:
+        target.location_id = source.location_id
+    elif not target.location_id and target.spot_lat is None and source.spot_lat is not None:
+        target.spot_lat = source.spot_lat
+        target.spot_lon = source.spot_lon
     if not target.airline and source.airline:
         target.airline = source.airline
     if not target.unit and source.unit:
@@ -322,6 +411,7 @@ def _spot_has_content(spot: models.Spot) -> bool:
             spot.markings,
             spot.notes,
             spot.location_id,
+            spot.spot_lat,
         ]
     )
 
@@ -342,10 +432,20 @@ def resolve_photos(db: Session, resolve: schemas.PhotoResolve) -> tuple[models.S
     if existing is not None and _spot_has_content(existing) and not resolve.force:
         return None, existing
 
+    # Defined location and raw pin are mutually exclusive — location_id wins if both given.
+    location_id = resolve.location_id
+    spot_lat = resolve.spot_lat if not location_id else None
+    spot_lon = resolve.spot_lon if not location_id else None
+
     if existing is not None:
         spot = existing
-        if resolve.location_id and not spot.location_id:
-            spot.location_id = resolve.location_id
+        if location_id and not spot.location_id:
+            spot.location_id = location_id
+            spot.spot_lat = None
+            spot.spot_lon = None
+        elif spot_lat is not None and not spot.location_id and spot.spot_lat is None:
+            spot.spot_lat = spot_lat
+            spot.spot_lon = spot_lon
         if resolve.operator_id and not spot.operator_id:
             spot.operator_id = resolve.operator_id
         if resolve.owner and not spot.owner:
@@ -354,7 +454,9 @@ def resolve_photos(db: Session, resolve: schemas.PhotoResolve) -> tuple[models.S
         spot = models.Spot(
             aircraft_id=aircraft.id,
             date=resolve.date,
-            location_id=resolve.location_id,
+            location_id=location_id,
+            spot_lat=spot_lat,
+            spot_lon=spot_lon,
             operator_id=resolve.operator_id,
             owner=resolve.owner,
         )

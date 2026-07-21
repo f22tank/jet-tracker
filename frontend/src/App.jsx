@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import LocationPage from "./components/LocationPage.jsx";
+import LocationsListPage from "./components/LocationsListPage.jsx";
 import OperatorPage from "./components/OperatorPage.jsx";
 import SpotPage from "./components/SpotPage.jsx";
 import TrayPage from "./components/TrayPage.jsx";
@@ -8,7 +10,7 @@ function getSpotIdFromUrl() {
   return Number(params.get("spot")) || 1;
 }
 
-function getOperatorIdFromUrl() {
+function getIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return Number(params.get("id")) || null;
 }
@@ -29,10 +31,15 @@ export default function App() {
 
   const isTray = path.startsWith("/tray");
   const isOperator = path.startsWith("/operator");
+  const isLocation = path.startsWith("/location") && !path.startsWith("/locations");
+  const isLocationsList = path.startsWith("/locations");
+  const isSpot = !isTray && !isOperator && !isLocation && !isLocationsList;
 
   let page;
   if (isTray) page = <TrayPage />;
-  else if (isOperator) page = <OperatorPage operatorId={getOperatorIdFromUrl()} />;
+  else if (isOperator) page = <OperatorPage operatorId={getIdFromUrl()} />;
+  else if (isLocation) page = <LocationPage locationId={getIdFromUrl()} />;
+  else if (isLocationsList) page = <LocationsListPage />;
   else page = <SpotPage spotId={getSpotIdFromUrl()} />;
 
   return (
@@ -40,7 +47,7 @@ export default function App() {
       <div className="app-nav mono">
         <a
           href="/"
-          className={!isTray && !isOperator ? "active" : ""}
+          className={isSpot ? "active" : ""}
           onClick={(e) => {
             e.preventDefault();
             navigate("/");
@@ -57,6 +64,16 @@ export default function App() {
           }}
         >
           Tray
+        </a>
+        <a
+          href="/locations"
+          className={isLocationsList ? "active" : ""}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/locations");
+          }}
+        >
+          Locations
         </a>
       </div>
       {page}

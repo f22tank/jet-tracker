@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ApiError,
-  fetchSpot,
-  mergeSpot,
-  photoUrl,
-  resolveSpotLocation,
-  updateSpotDate,
-  updateSpotFields,
-} from "../api.js";
+import { ApiError, fetchSpot, mergeSpot, photoUrl, updateSpotDate, updateSpotFields } from "../api.js";
 import CollisionDialog from "./CollisionDialog.jsx";
 import EditableField from "./EditableField.jsx";
+import LocationField from "./LocationField.jsx";
+import MiniMap from "./MiniMap.jsx";
 import OperatorField from "./OperatorField.jsx";
-import UnplacedLocation from "./UnplacedLocation.jsx";
 
 function formatDate(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
@@ -139,8 +132,11 @@ export default function SpotPage({ spotId: initialSpotId }) {
     setSpot(updated);
   }
 
-  async function resolveLocation(location) {
-    const updated = await resolveSpotLocation(spotId, location);
+  async function setLocation(update) {
+    const fields = update.location_id
+      ? { location_id: update.location_id }
+      : { spot_lat: update.spot_lat, spot_lon: update.spot_lon };
+    const updated = await updateSpotFields(spotId, fields);
     setSpot(updated);
   }
 
@@ -222,17 +218,13 @@ export default function SpotPage({ spotId: initialSpotId }) {
           <div className="cell rail">
             <div className="sect">
               <h3>Location</h3>
-              {spot.location ? (
-                <>
-                  <div className="loc-code mono">{spot.location.icao || spot.location.iata || "—"}</div>
-                  <div className="loc-name">
-                    {spot.location.name}
-                    {spot.location.city ? ` · ${spot.location.city}${spot.location.country ? `, ${spot.location.country}` : ""}` : ""}
-                  </div>
-                </>
-              ) : (
-                <UnplacedLocation onResolve={resolveLocation} />
-              )}
+              <LocationField
+                location={spot.location}
+                spotLat={spot.spot_lat}
+                spotLon={spot.spot_lon}
+                onSet={setLocation}
+              />
+              <MiniMap lat={spot.location?.lat ?? spot.spot_lat} lon={spot.location?.lon ?? spot.spot_lon} />
             </div>
 
             <div className="sect">

@@ -142,6 +142,57 @@ class OperatorOut(BaseModel):
     stats: OperatorStats
 
 
+class LocationSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    icao: Optional[str] = None
+    iata: Optional[str] = None
+    name: str
+    city: Optional[str] = None
+    country: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+
+
+class LocationCreate(BaseModel):
+    """Find-or-create a Location by ICAO (falling back to name)."""
+
+    icao: Optional[str] = None
+    iata: Optional[str] = None
+    name: str
+    city: Optional[str] = None
+    country: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+
+
+class LocationListEntry(BaseModel):
+    id: int
+    name: str
+    icao: Optional[str] = None
+    iata: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    spot_count: int
+
+
+class LocationSpotEntry(BaseModel):
+    id: int
+    date: datetime.date
+    aircraft_identifier: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    operator_label: Optional[str] = None
+
+
+class LocationStats(BaseModel):
+    spot_count: int
+    aircraft_count: int
+    operator_count: int
+    first_date: Optional[datetime.date] = None
+    last_date: Optional[datetime.date] = None
+
+
 class LocationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -153,6 +204,9 @@ class LocationOut(BaseModel):
     country: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
+
+    spots: list[LocationSpotEntry] = []
+    stats: LocationStats
 
 
 class PhotoOut(BaseModel):
@@ -195,7 +249,9 @@ class SpotOut(BaseModel):
     cover_photo_id: Optional[int] = None
     aircraft: AircraftOut
     operator: Optional[OperatorSummary] = None
-    location: Optional[LocationOut] = None
+    location: Optional[LocationSummary] = None
+    spot_lat: Optional[float] = None
+    spot_lon: Optional[float] = None
     photos: list[PhotoOut]
     ledger: list[LedgerEntry] = []
 
@@ -204,6 +260,9 @@ class SpotOut(BaseModel):
 
 class SpotUpdate(BaseModel):
     operator_id: Optional[int] = None
+    location_id: Optional[int] = None
+    spot_lat: Optional[float] = None
+    spot_lon: Optional[float] = None
     livery: Optional[str] = None
     owner: Optional[str] = None
     markings: Optional[str] = None
@@ -218,18 +277,6 @@ class SpotDateUpdate(BaseModel):
 class SpotConflict(BaseModel):
     detail: str = "A spot for this aircraft already exists on that date."
     conflicting_spot: SpotOut
-
-
-class LocationResolve(BaseModel):
-    """Find-or-create a Location by ICAO (falling back to name) and attach it to a spot."""
-
-    icao: Optional[str] = None
-    iata: Optional[str] = None
-    name: str
-    city: Optional[str] = None
-    country: Optional[str] = None
-    lat: Optional[float] = None
-    lon: Optional[float] = None
 
 
 class TrayPhoto(PhotoOut):
@@ -247,6 +294,8 @@ class PhotoResolve(BaseModel):
     new_aircraft: Optional[AircraftCreate] = None
 
     location_id: Optional[int] = None
+    spot_lat: Optional[float] = None
+    spot_lon: Optional[float] = None
     operator_id: Optional[int] = None
     owner: Optional[str] = None  # ga only — stays free-text
 

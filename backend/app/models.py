@@ -155,6 +155,10 @@ class Spot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     aircraft_id = Column(Integer, ForeignKey("aircraft.id"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    # Raw one-off pin — mutually exclusive with location_id (enforced in crud, not the DB:
+    # exactly one of "defined place" / "raw pin" / "unplaced" applies at a time).
+    spot_lat = Column(Float, nullable=True)
+    spot_lon = Column(Float, nullable=True)
     operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
     date = Column(Date, nullable=False)
 

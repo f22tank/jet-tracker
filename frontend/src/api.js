@@ -53,13 +53,6 @@ export function mergeSpot(spotId, targetSpotId) {
   });
 }
 
-export function resolveSpotLocation(spotId, location) {
-  return request(`/api/spots/${spotId}/location`, {
-    method: "PUT",
-    body: JSON.stringify(location),
-  });
-}
-
 /** Resolves a photo's `path`/`thumbnail_path` to a loadable URL. Locally-ingested
  * photos are relative ("/photos/xxx.jpg", served by the API); seeded demo photos
  * are already-absolute URLs (Unsplash) and pass through unchanged. */
@@ -106,6 +99,22 @@ export function createLocation(location) {
     method: "POST",
     body: JSON.stringify(location),
   });
+}
+
+export function searchLocations(q) {
+  return request(`/api/locations/search?q=${encodeURIComponent(q)}`);
+}
+
+export function findLocation(value) {
+  return request(`/api/locations/find?value=${encodeURIComponent(value)}`);
+}
+
+export function fetchLocationsList() {
+  return request("/api/locations");
+}
+
+export function fetchLocation(locationId) {
+  return request(`/api/locations/${locationId}`);
 }
 
 export function searchOperators(type, q) {

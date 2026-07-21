@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, createLocation, fetchTray, ingestPhotos, photoUrl, resolvePhotos } from "../api.js";
+import { ApiError, fetchTray, ingestPhotos, photoUrl, resolvePhotos } from "../api.js";
 import AircraftTagInput from "./AircraftTagInput.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
+import LocationTagInput from "./LocationTagInput.jsx";
 import OperatorTagInput from "./OperatorTagInput.jsx";
 
 function today() {
@@ -22,8 +23,7 @@ export default function TrayPage() {
   const [dateMode, setDateMode] = useState("off"); // off | fixed | various
   const [fixedDate, setFixedDate] = useState(today());
   const [locationMode, setLocationMode] = useState("off");
-  const [fixedLocation, setFixedLocation] = useState(null); // { id, label }
-  const [locationDraft, setLocationDraft] = useState({ icao: "", name: "" });
+  const [fixedPlacement, setFixedPlacement] = useState(null); // { location_id, label } or { spot_lat, spot_lon, label }
   const [airlineMode, setAirlineMode] = useState("off");
   const [fixedOperator, setFixedOperator] = useState(null); // { id, name }
 
@@ -70,20 +70,29 @@ export default function TrayPage() {
     return perPhotoDate[photo.id] || (photo.taken_at ? photo.taken_at.slice(0, 10) : "");
   }
 
-  async function applyFixedLocation() {
-    if (!locationDraft.name.trim()) return;
-    const loc = await createLocation({
-      icao: locationDraft.icao.trim() || null,
-      name: locationDraft.name.trim(),
-    });
-    setFixedLocation({ id: loc.id, label: loc.icao ? `${loc.name} · ${loc.icao}` : loc.name });
+  function handleFixedPlacement(update) {
+    if (update.location_id) {
+      setFixedPlacement({ location_id: update.location_id, label: update.location.name });
+    } else {
+      setFixedPlacement({
+        spot_lat: update.spot_lat,
+        spot_lon: update.spot_lon,
+        label: `${update.spot_lat.toFixed(3)}, ${update.spot_lon.toFixed(3)}`,
+      });
+    }
   }
 
   function buildPayload(photoIds, date, ref, category) {
     const payload = { photo_ids: photoIds, date };
     if (ref.aircraft_id) payload.aircraft_id = ref.aircraft_id;
     else payload.new_aircraft = ref.new_aircraft;
-    if (locationMode === "fixed" && fixedLocation) payload.location_id = fixedLocation.id;
+    if (locationMode === "fixed" && fixedPlacement) {
+      if (fixedPlacement.location_id) payload.location_id = fixedPlacement.location_id;
+      else {
+        payload.spot_lat = fixedPlacement.spot_lat;
+        payload.spot_lon = fixedPlacement.spot_lon;
+      }
+    }
     if (category === "commercial" && airlineMode === "fixed" && fixedOperator) {
       payload.operator_id = fixedOperator.id;
     }
@@ -162,7 +171,9 @@ export default function TrayPage() {
     ? {
         aircraft: conflict.conflictingSpot.aircraft,
         date: conflict.payload.date,
-        location: fixedLocation ? { name: fixedLocation.label } : null,
+        location: fixedPlacement?.location_id ? { name: fixedPlacement.label } : null,
+        spot_lat: fixedPlacement?.spot_lat ?? null,
+        spot_lon: fixedPlacement?.spot_lon ?? null,
         photos: new Array(conflict.payload.photo_ids.length).fill(null),
         operator: fixedOperator ? { name: fixedOperator.name } : null,
         owner: conflict.payload.owner || null,
@@ -224,23 +235,10 @@ export default function TrayPage() {
             </button>
           ))}
           {locationMode === "fixed" &&
-            (fixedLocation ? (
-              <span className="mono fixed-value">{fixedLocation.label}</span>
+            (fixedPlacement ? (
+              <span className="mono fixed-value">{fixedPlacement.label}</span>
             ) : (
-              <>
-                <input
-                  placeholder="ICAO"
-                  style={{ width: 70 }}
-                  value={locationDraft.icao}
-                  onChange={(e) => setLocationDraft((d) => ({ ...d, icao: e.target.value.toUpperCase() }))}
-                />
-                <input
-                  placeholder="Name"
-                  value={locationDraft.name}
-                  onChange={(e) => setLocationDraft((d) => ({ ...d, name: e.target.value }))}
-                />
-                <button onClick={applyFixedLocation}>Set</button>
-              </>
+              <LocationTagInput buttonLabel="Set" onSet={handleFixedPlacement} />
             ))}
         </div>
 

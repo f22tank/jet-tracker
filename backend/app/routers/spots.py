@@ -60,11 +60,3 @@ def merge_spot(spot_id: int, target_spot_id: int, db: Session = Depends(get_db))
 
     merged = crud.merge_spots(db, source, target)
     return crud.to_spot_out(db, merged)
-
-
-@router.put("/{spot_id}/location", response_model=schemas.SpotOut)
-def set_location(spot_id: int, resolve: schemas.LocationResolve, db: Session = Depends(get_db)):
-    """Resolve an unplaced spot's location (find-or-create by ICAO)."""
-    spot = _get_spot_or_404(db, spot_id)
-    spot = crud.resolve_location(db, spot, resolve)
-    return crud.to_spot_out(db, spot)
