@@ -10,6 +10,7 @@ import {
 } from "../api.js";
 import CollisionDialog from "./CollisionDialog.jsx";
 import EditableField from "./EditableField.jsx";
+import OperatorField from "./OperatorField.jsx";
 import UnplacedLocation from "./UnplacedLocation.jsx";
 
 function formatDate(iso) {
@@ -238,7 +239,13 @@ export default function SpotPage({ spotId: initialSpotId }) {
               <h3>Details</h3>
               {spot.aircraft.category === "military" && (
                 <>
-                  <EditableField label="Unit" value={spot.unit} placeholder="add unit" onSave={(v) => saveField("unit", v)} />
+                  <OperatorField
+                    label="Unit"
+                    type="military_unit"
+                    operator={spot.operator}
+                    legacyValue={spot.unit}
+                    onSave={(operatorId) => saveField("operator_id", operatorId)}
+                  />
                   <EditableField label="Markings" value={spot.markings} placeholder="add markings" onSave={(v) => saveField("markings", v)} />
                 </>
               )}
@@ -250,7 +257,13 @@ export default function SpotPage({ spotId: initialSpotId }) {
               )}
               {spot.aircraft.category === "commercial" && (
                 <>
-                  <EditableField label="Airline" value={spot.airline} placeholder="add airline" onSave={(v) => saveField("airline", v)} />
+                  <OperatorField
+                    label="Airline"
+                    type="airline"
+                    operator={spot.operator}
+                    legacyValue={spot.airline}
+                    onSave={(operatorId) => saveField("operator_id", operatorId)}
+                  />
                   <EditableField label="Livery" value={spot.livery} placeholder="add livery" onSave={(v) => saveField("livery", v)} />
                 </>
               )}

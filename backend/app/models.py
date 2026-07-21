@@ -81,6 +81,56 @@ class Aircraft(Base):
         return self.serial if self.category == AircraftCategory.military else self.registration
 
 
+class OperatorType(str, enum.Enum):
+    airline = "airline"
+    military_unit = "military_unit"
+
+
+class Operator(Base):
+    __tablename__ = "operators"
+    __table_args__ = (UniqueConstraint("type", "name", name="uq_operator_type_name"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    type = Column(Enum(OperatorType, name="operator_type"), nullable=False)
+    name = Column(String, nullable=False)
+    image = Column(String, nullable=True)
+    parent_operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    parent = relationship("Operator", remote_side=[id], back_populates="children")
+    children = relationship("Operator", back_populates="parent")
+
+    airline_detail = relationship(
+        "AirlineDetail", back_populates="operator", uselist=False, cascade="all, delete-orphan"
+    )
+    unit_detail = relationship(
+        "UnitDetail", back_populates="operator", uselist=False, cascade="all, delete-orphan"
+    )
+    spots = relationship("Spot", back_populates="operator")
+
+
+class AirlineDetail(Base):
+    __tablename__ = "airline_details"
+
+    operator_id = Column(Integer, ForeignKey("operators.id"), primary_key=True)
+    iata = Column(String, nullable=True)
+    icao = Column(String, nullable=True)
+    callsign = Column(String, nullable=True)
+
+    operator = relationship("Operator", back_populates="airline_detail")
+
+
+class UnitDetail(Base):
+    __tablename__ = "unit_details"
+
+    operator_id = Column(Integer, ForeignKey("operators.id"), primary_key=True)
+    branch = Column(String, nullable=True)
+    tail_code = Column(String, nullable=True)
+    home_base = Column(String, nullable=True)
+
+    operator = relationship("Operator", back_populates="unit_detail")
+
+
 class Location(Base):
     __tablename__ = "locations"
 
@@ -105,13 +155,16 @@ class Spot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     aircraft_id = Column(Integer, ForeignKey("aircraft.id"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
     date = Column(Date, nullable=False)
 
-    # commercial
+    # Legacy free-text fallback, kept for one release post-migration — superseded by
+    # operator_id for commercial (airline) / military (unit). Not written by new code paths.
     airline = Column(String, nullable=True)
-    livery = Column(String, nullable=True)
-    # military / ga — per-sighting since unit/owner and paint schemes change over time
     unit = Column(String, nullable=True)
+
+    livery = Column(String, nullable=True)
+    # ga — stays free-text per brief (one-offs, not worth an Operator record)
     owner = Column(String, nullable=True)
     markings = Column(String, nullable=True)
 
@@ -124,6 +177,7 @@ class Spot(Base):
 
     aircraft = relationship("Aircraft", back_populates="spots", foreign_keys=[aircraft_id])
     location = relationship("Location", back_populates="spots", foreign_keys=[location_id])
+    operator = relationship("Operator", back_populates="spots", foreign_keys=[operator_id])
     photos = relationship(
         "Photo",
         back_populates="spot",

@@ -5,8 +5,20 @@ Run with: python -m app.seed
 """
 import datetime
 
+from . import migrate_operators
 from .database import Base, SessionLocal, engine
-from .models import Aircraft, AircraftCategory, GAConfiguration, GARole, Location, Photo, Spot
+from .models import (
+    Aircraft,
+    AircraftCategory,
+    GAConfiguration,
+    GARole,
+    Location,
+    Operator,
+    OperatorType,
+    Photo,
+    Spot,
+    UnitDetail,
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -176,6 +188,36 @@ def seed():
 
         db.commit()
         print(f"Seeded spot id={current.id} for N1234.")
+    finally:
+        db.close()
+
+    # Backfill Operator records from the legacy airline/unit strings just seeded above —
+    # this exercises the real migration path rather than hand-wiring operator_id.
+    migrate_operators.migrate()
+
+    # Demo polish: a parent wing + logo/patch images, so the hierarchy and image
+    # display have something to show.
+    db = SessionLocal()
+    try:
+        squadron = db.query(Operator).filter(
+            Operator.type == OperatorType.military_unit, Operator.name == "20th Fighter Wing"
+        ).first()
+        airline = db.query(Operator).filter(
+            Operator.type == OperatorType.airline, Operator.name == "United Airlines"
+        ).first()
+
+        if squadron and not squadron.parent_operator_id:
+            wing = Operator(type=OperatorType.military_unit, name="9th Air Force")
+            db.add(wing)
+            db.flush()
+            db.add(UnitDetail(operator_id=wing.id))
+            squadron.parent_operator_id = wing.id
+            squadron.image = "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?w=300&q=70"
+
+        if airline:
+            airline.image = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=300&q=70"
+
+        db.commit()
     finally:
         db.close()
 

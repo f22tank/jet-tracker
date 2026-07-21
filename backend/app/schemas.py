@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from .models import AircraftCategory, GAConfiguration, GARole
+from .models import AircraftCategory, GAConfiguration, GARole, OperatorType
 
 
 class AircraftOut(BaseModel):
@@ -71,6 +71,77 @@ class AircraftSearchResult(BaseModel):
     variant: Optional[str] = None
 
 
+class OperatorSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    type: OperatorType
+    name: str
+    image: Optional[str] = None
+
+    # airline
+    iata: Optional[str] = None
+    icao: Optional[str] = None
+    callsign: Optional[str] = None
+    # military_unit
+    branch: Optional[str] = None
+    tail_code: Optional[str] = None
+    home_base: Optional[str] = None
+
+
+class OperatorCreate(BaseModel):
+    type: OperatorType
+    name: str
+    image: Optional[str] = None
+    notes: Optional[str] = None
+    parent_operator_id: Optional[int] = None
+
+    iata: Optional[str] = None
+    icao: Optional[str] = None
+    callsign: Optional[str] = None
+
+    branch: Optional[str] = None
+    tail_code: Optional[str] = None
+    home_base: Optional[str] = None
+
+
+class OperatorSpotEntry(BaseModel):
+    id: int
+    date: datetime.date
+    aircraft_identifier: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    location_label: str
+
+
+class OperatorStats(BaseModel):
+    spot_count: int
+    aircraft_count: int
+    first_date: Optional[datetime.date] = None
+    last_date: Optional[datetime.date] = None
+
+
+class OperatorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    type: OperatorType
+    name: str
+    image: Optional[str] = None
+    notes: Optional[str] = None
+
+    iata: Optional[str] = None
+    icao: Optional[str] = None
+    callsign: Optional[str] = None
+    branch: Optional[str] = None
+    tail_code: Optional[str] = None
+    home_base: Optional[str] = None
+
+    parent: Optional[OperatorSummary] = None
+    children: list[OperatorSummary] = []
+    spots: list[OperatorSpotEntry] = []
+    stats: OperatorStats
+
+
 class LocationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -113,14 +184,17 @@ class LedgerEntry(BaseModel):
 class SpotOut(BaseModel):
     id: int
     date: datetime.date
+    # legacy fallback strings — superseded by `operator` below, kept for unmigrated data
     airline: Optional[str] = None
-    livery: Optional[str] = None
     unit: Optional[str] = None
+
+    livery: Optional[str] = None
     owner: Optional[str] = None
     markings: Optional[str] = None
     notes: Optional[str] = None
     cover_photo_id: Optional[int] = None
     aircraft: AircraftOut
+    operator: Optional[OperatorSummary] = None
     location: Optional[LocationOut] = None
     photos: list[PhotoOut]
     ledger: list[LedgerEntry] = []
@@ -129,9 +203,8 @@ class SpotOut(BaseModel):
 
 
 class SpotUpdate(BaseModel):
-    airline: Optional[str] = None
+    operator_id: Optional[int] = None
     livery: Optional[str] = None
-    unit: Optional[str] = None
     owner: Optional[str] = None
     markings: Optional[str] = None
     notes: Optional[str] = None
@@ -174,9 +247,8 @@ class PhotoResolve(BaseModel):
     new_aircraft: Optional[AircraftCreate] = None
 
     location_id: Optional[int] = None
-    airline: Optional[str] = None
-    unit: Optional[str] = None
-    owner: Optional[str] = None
+    operator_id: Optional[int] = None
+    owner: Optional[str] = None  # ga only — stays free-text
 
     force: bool = False
 

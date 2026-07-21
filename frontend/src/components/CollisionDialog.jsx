@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 function operatorLabel(spot) {
-  return spot.airline || spot.unit || spot.owner || null;
+  return spot.operator?.name || spot.airline || spot.unit || spot.owner || null;
 }
 
 function SpotSummaryCard({ label, tag, spot, date, badge }) {

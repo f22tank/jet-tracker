@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, createLocation, fetchTray, ingestPhotos, photoUrl, resolvePhotos } from "../api.js";
 import AircraftTagInput from "./AircraftTagInput.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
+import OperatorTagInput from "./OperatorTagInput.jsx";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -24,7 +25,7 @@ export default function TrayPage() {
   const [fixedLocation, setFixedLocation] = useState(null); // { id, label }
   const [locationDraft, setLocationDraft] = useState({ icao: "", name: "" });
   const [airlineMode, setAirlineMode] = useState("off");
-  const [fixedAirline, setFixedAirline] = useState("");
+  const [fixedOperator, setFixedOperator] = useState(null); // { id, name }
 
   const [conflict, setConflict] = useState(null); // { payload, conflictingSpot }
   const [bulkError, setBulkError] = useState(null);
@@ -83,8 +84,8 @@ export default function TrayPage() {
     if (ref.aircraft_id) payload.aircraft_id = ref.aircraft_id;
     else payload.new_aircraft = ref.new_aircraft;
     if (locationMode === "fixed" && fixedLocation) payload.location_id = fixedLocation.id;
-    if (category === "commercial" && airlineMode === "fixed" && fixedAirline.trim()) {
-      payload.airline = fixedAirline.trim();
+    if (category === "commercial" && airlineMode === "fixed" && fixedOperator) {
+      payload.operator_id = fixedOperator.id;
     }
     return payload;
   }
@@ -163,8 +164,7 @@ export default function TrayPage() {
         date: conflict.payload.date,
         location: fixedLocation ? { name: fixedLocation.label } : null,
         photos: new Array(conflict.payload.photo_ids.length).fill(null),
-        airline: conflict.payload.airline || null,
-        unit: conflict.payload.unit || null,
+        operator: fixedOperator ? { name: fixedOperator.name } : null,
         owner: conflict.payload.owner || null,
       }
     : null;
@@ -251,9 +251,16 @@ export default function TrayPage() {
               {m}
             </button>
           ))}
-          {airlineMode === "fixed" && (
-            <input placeholder="United Airlines" value={fixedAirline} onChange={(e) => setFixedAirline(e.target.value)} />
-          )}
+          {airlineMode === "fixed" &&
+            (fixedOperator ? (
+              <span className="mono fixed-value">{fixedOperator.name}</span>
+            ) : (
+              <OperatorTagInput
+                type="airline"
+                buttonLabel="Set"
+                onTag={(ref) => setFixedOperator({ id: ref.operator_id, name: ref.operator.name })}
+              />
+            ))}
         </div>
       </div>
 

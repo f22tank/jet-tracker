@@ -53,13 +53,14 @@ def to_spot_out(db: Session, spot: models.Spot) -> schemas.SpotOut:
         id=spot.id,
         date=spot.date,
         airline=spot.airline,
-        livery=spot.livery,
         unit=spot.unit,
+        livery=spot.livery,
         owner=spot.owner,
         markings=spot.markings,
         notes=spot.notes,
         cover_photo_id=spot.cover_photo_id,
         aircraft=schemas.AircraftOut.model_validate(spot.aircraft),
+        operator=to_operator_summary(spot.operator) if spot.operator else None,
         location=schemas.LocationOut.model_validate(spot.location) if spot.location else None,
         photos=[schemas.PhotoOut.model_validate(p) for p in spot.photos],
         ledger=build_ledger(db, spot.aircraft_id, spot.id),
@@ -120,14 +121,139 @@ def merge_spots(db: Session, source: models.Spot, target: models.Spot) -> models
         target.notes = f"{target.notes}\n\n{source.notes}" if target.notes else source.notes
     if not target.livery and source.livery:
         target.livery = source.livery
+    if not target.operator_id and source.operator_id:
+        target.operator_id = source.operator_id
     if not target.airline and source.airline:
         target.airline = source.airline
+    if not target.unit and source.unit:
+        target.unit = source.unit
     if not target.markings and source.markings:
         target.markings = source.markings
     db.delete(source)
     db.commit()
     db.refresh(target)
     return target
+
+
+# ---- operators ----
+
+
+def _operator_detail_fields(operator: models.Operator) -> dict:
+    if operator.type == models.OperatorType.airline and operator.airline_detail:
+        d = operator.airline_detail
+        return {"iata": d.iata, "icao": d.icao, "callsign": d.callsign}
+    if operator.type == models.OperatorType.military_unit and operator.unit_detail:
+        d = operator.unit_detail
+        return {"branch": d.branch, "tail_code": d.tail_code, "home_base": d.home_base}
+    return {}
+
+
+def to_operator_summary(operator: models.Operator) -> schemas.OperatorSummary:
+    return schemas.OperatorSummary(
+        id=operator.id,
+        type=operator.type,
+        name=operator.name,
+        image=operator.image,
+        **_operator_detail_fields(operator),
+    )
+
+
+def get_operator(db: Session, operator_id: int) -> models.Operator | None:
+    return db.query(models.Operator).filter(models.Operator.id == operator_id).first()
+
+
+def find_operator_by_name(db: Session, type_: models.OperatorType, name: str) -> models.Operator | None:
+    return (
+        db.query(models.Operator)
+        .filter(models.Operator.type == type_, func.lower(models.Operator.name) == name.strip().lower())
+        .first()
+    )
+
+
+def search_operators(db: Session, type_: models.OperatorType, q: str, limit: int = 8) -> list[models.Operator]:
+    q = q.strip()
+    query = db.query(models.Operator).filter(models.Operator.type == type_)
+    if q:
+        query = query.filter(models.Operator.name.ilike(f"%{q}%"))
+    return query.order_by(models.Operator.name).limit(limit).all()
+
+
+def create_operator(db: Session, payload: schemas.OperatorCreate) -> models.Operator:
+    operator = models.Operator(
+        type=payload.type,
+        name=payload.name,
+        image=payload.image,
+        notes=payload.notes,
+        parent_operator_id=payload.parent_operator_id,
+    )
+    db.add(operator)
+    db.flush()
+
+    if payload.type == models.OperatorType.airline:
+        db.add(
+            models.AirlineDetail(
+                operator_id=operator.id, iata=payload.iata, icao=payload.icao, callsign=payload.callsign
+            )
+        )
+    else:
+        db.add(
+            models.UnitDetail(
+                operator_id=operator.id,
+                branch=payload.branch,
+                tail_code=payload.tail_code,
+                home_base=payload.home_base,
+            )
+        )
+    db.commit()
+    db.refresh(operator)
+    return operator
+
+
+def find_or_create_operator(db: Session, payload: schemas.OperatorCreate) -> models.Operator:
+    existing = find_operator_by_name(db, payload.type, payload.name)
+    if existing:
+        return existing
+    return create_operator(db, payload)
+
+
+def to_operator_out(db: Session, operator: models.Operator) -> schemas.OperatorOut:
+    spots = (
+        db.query(models.Spot)
+        .filter(models.Spot.operator_id == operator.id)
+        .order_by(models.Spot.date.desc())
+        .all()
+    )
+    spot_entries = [
+        schemas.OperatorSpotEntry(
+            id=s.id,
+            date=s.date,
+            aircraft_identifier=s.aircraft.identifier,
+            aircraft_type=s.aircraft.type,
+            location_label=_location_label(s),
+        )
+        for s in spots
+    ]
+    dates = [s.date for s in spots]
+    stats = schemas.OperatorStats(
+        spot_count=len(spots),
+        aircraft_count=len({s.aircraft_id for s in spots}),
+        first_date=min(dates) if dates else None,
+        last_date=max(dates) if dates else None,
+    )
+
+    detail = _operator_detail_fields(operator)
+    return schemas.OperatorOut(
+        id=operator.id,
+        type=operator.type,
+        name=operator.name,
+        image=operator.image,
+        notes=operator.notes,
+        parent=to_operator_summary(operator.parent) if operator.parent else None,
+        children=[to_operator_summary(c) for c in operator.children],
+        spots=spot_entries,
+        stats=stats,
+        **detail,
+    )
 
 
 # ---- aircraft ----
@@ -187,7 +313,16 @@ def _spot_has_content(spot: models.Spot) -> bool:
     if spot.photos:
         return True
     return any(
-        [spot.airline, spot.livery, spot.unit, spot.owner, spot.markings, spot.notes, spot.location_id]
+        [
+            spot.operator_id,
+            spot.airline,
+            spot.unit,
+            spot.livery,
+            spot.owner,
+            spot.markings,
+            spot.notes,
+            spot.location_id,
+        ]
     )
 
 
@@ -211,10 +346,8 @@ def resolve_photos(db: Session, resolve: schemas.PhotoResolve) -> tuple[models.S
         spot = existing
         if resolve.location_id and not spot.location_id:
             spot.location_id = resolve.location_id
-        if resolve.airline and not spot.airline:
-            spot.airline = resolve.airline
-        if resolve.unit and not spot.unit:
-            spot.unit = resolve.unit
+        if resolve.operator_id and not spot.operator_id:
+            spot.operator_id = resolve.operator_id
         if resolve.owner and not spot.owner:
             spot.owner = resolve.owner
     else:
@@ -222,8 +355,7 @@ def resolve_photos(db: Session, resolve: schemas.PhotoResolve) -> tuple[models.S
             aircraft_id=aircraft.id,
             date=resolve.date,
             location_id=resolve.location_id,
-            airline=resolve.airline,
-            unit=resolve.unit,
+            operator_id=resolve.operator_id,
             owner=resolve.owner,
         )
         db.add(spot)

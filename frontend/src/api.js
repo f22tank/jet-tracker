@@ -108,4 +108,23 @@ export function createLocation(location) {
   });
 }
 
+export function searchOperators(type, q) {
+  return request(`/api/operators/search?type=${type}&q=${encodeURIComponent(q)}`);
+}
+
+export function findOperator(type, value) {
+  return request(`/api/operators/find?type=${type}&value=${encodeURIComponent(value)}`);
+}
+
+export function createOperator(payload) {
+  return request("/api/operators", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchOperator(operatorId) {
+  return request(`/api/operators/${operatorId}`);
+}
+
 export { ApiError };

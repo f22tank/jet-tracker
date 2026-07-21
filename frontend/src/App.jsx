@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
+import OperatorPage from "./components/OperatorPage.jsx";
 import SpotPage from "./components/SpotPage.jsx";
 import TrayPage from "./components/TrayPage.jsx";
 
 function getSpotIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return Number(params.get("spot")) || 1;
+}
+
+function getOperatorIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return Number(params.get("id")) || null;
 }
 
 export default function App() {
@@ -22,13 +28,19 @@ export default function App() {
   }
 
   const isTray = path.startsWith("/tray");
+  const isOperator = path.startsWith("/operator");
+
+  let page;
+  if (isTray) page = <TrayPage />;
+  else if (isOperator) page = <OperatorPage operatorId={getOperatorIdFromUrl()} />;
+  else page = <SpotPage spotId={getSpotIdFromUrl()} />;
 
   return (
     <>
       <div className="app-nav mono">
         <a
           href="/"
-          className={isTray ? "" : "active"}
+          className={!isTray && !isOperator ? "active" : ""}
           onClick={(e) => {
             e.preventDefault();
             navigate("/");
@@ -47,7 +59,7 @@ export default function App() {
           Tray
         </a>
       </div>
-      {isTray ? <TrayPage /> : <SpotPage spotId={getSpotIdFromUrl()} />}
+      {page}
     </>
   );
 }
