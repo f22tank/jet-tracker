@@ -57,6 +57,24 @@ export function mergeSpot(spotId, targetSpotId) {
   });
 }
 
+/** The "wrong airframe" path — re-points a spot at a different aircraft (existing
+ * via aircraft_id, or a brand-new one via new_aircraft). Throws ApiError with
+ * status 409 and body.conflicting_spot on UNIQUE(aircraft, date) collision —
+ * resolve with mergeSpot(spotId, conflictingSpot.id), same as updateSpotDate. */
+export function reassignSpotAircraft(spotId, payload) {
+  return request(`/api/spots/${spotId}/reassign-aircraft`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Detaches a misfiled photo from a spot — sends it back to the tray rather than deleting it. */
+export function detachSpotPhoto(spotId, photoId) {
+  return request(`/api/spots/${spotId}/photos/${photoId}`, {
+    method: "DELETE",
+  });
+}
+
 /** Resolves a photo's `path`/`thumbnail_path` to a loadable URL. Locally-ingested
  * photos are relative ("/photos/xxx.jpg", served by the API); seeded demo photos
  * are already-absolute URLs (Unsplash) and pass through unchanged. */

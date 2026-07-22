@@ -526,11 +526,63 @@ def get_aircraft(db: Session, aircraft_id: int) -> models.Aircraft | None:
 
 def update_aircraft_fields(db: Session, aircraft: models.Aircraft, update: schemas.AircraftUpdate) -> models.Aircraft:
     data = update.model_dump(exclude_unset=True)
+    manufacturer_name = data.pop("manufacturer_name", None)
     for field, value in data.items():
         setattr(aircraft, field, value)
+    if manufacturer_name is not None:
+        if manufacturer_name.strip():
+            aircraft.manufacturer_id = find_or_create_manufacturer(db, manufacturer_name.strip()).id
+        else:
+            aircraft.manufacturer_id = None
     db.commit()
     db.refresh(aircraft)
     return aircraft
+
+
+def reassign_spot_aircraft(
+    db: Session, spot: models.Spot, reassign: schemas.SpotAircraftReassign
+) -> tuple[models.Spot | None, models.Spot | None]:
+    """The "wrong airframe" path: point this spot at a different Aircraft (existing
+    or newly created), leaving the original aircraft record untouched. Returns
+    (spot, None) on success, or (None, conflicting_spot) if the target aircraft
+    already has a spot on this date — same shape as resolve_photos/update_spot_date,
+    so the caller reuses the existing merge-warn dialog and merge endpoint."""
+    if reassign.new_aircraft:
+        aircraft = create_aircraft(db, reassign.new_aircraft)
+    else:
+        aircraft = db.query(models.Aircraft).filter(models.Aircraft.id == reassign.aircraft_id).first()
+        if aircraft is None:
+            raise ValueError("aircraft_id not found")
+
+    if aircraft.id == spot.aircraft_id:
+        return spot, None
+
+    conflict = get_spot_by_aircraft_date(db, aircraft.id, spot.date, exclude_spot_id=spot.id)
+    if conflict is not None and _spot_has_content(conflict):
+        return None, conflict
+
+    spot.aircraft_id = aircraft.id
+    db.commit()
+    db.refresh(spot)
+    return spot, None
+
+
+def detach_photo_from_spot(db: Session, spot: models.Spot, photo: models.Photo) -> models.Spot:
+    """Sends a misfiled photo back to the tray (spot_id=NULL). If it was the
+    cover, falls back to another remaining photo, or clears the cover entirely."""
+    photo.spot_id = None
+    db.flush()
+    if spot.cover_photo_id == photo.id:
+        remaining = (
+            db.query(models.Photo)
+            .filter(models.Photo.spot_id == spot.id)
+            .order_by(models.Photo.id)
+            .first()
+        )
+        spot.cover_photo_id = remaining.id if remaining else None
+    db.commit()
+    db.refresh(spot)
+    return spot
 
 
 def to_aircraft_detail(db: Session, aircraft: models.Aircraft) -> schemas.AircraftDetailOut:

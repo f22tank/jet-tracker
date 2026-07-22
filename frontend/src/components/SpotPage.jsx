@@ -8,6 +8,7 @@ import Lightbox from "./Lightbox.jsx";
 import LocationField from "./LocationField.jsx";
 import MiniMap from "./MiniMap.jsx";
 import OperatorField from "./OperatorField.jsx";
+import SpotEditModal from "./SpotEditModal.jsx";
 
 export default function SpotPage({ spotId: initialSpotId }) {
   const [spotId, setSpotId] = useState(initialSpotId);
@@ -16,6 +17,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
   const [loadError, setLoadError] = useState(null);
   const [dateConflict, setDateConflict] = useState(null); // { pendingDate, currentSpot, conflictingSpot }
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const load = useCallback((id) => {
     setLoading(true);
@@ -82,6 +84,15 @@ export default function SpotPage({ spotId: initialSpotId }) {
     setSpot(updated);
   }
 
+  function handleEditMerged(merged) {
+    setEditOpen(false);
+    setSpot(merged);
+    setSpotId(merged.id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("spot", merged.id);
+    window.history.pushState({}, "", url);
+  }
+
   if (loading) return <div className="state-msg mono">Loading spot…</div>;
   if (loadError) return <div className="state-msg error mono">{loadError}</div>;
   if (!spot) return null;
@@ -124,6 +135,9 @@ export default function SpotPage({ spotId: initialSpotId }) {
               <span className="dl">Spotted</span>
               <span className="d">{formatDate(spot.date)}</span>
             </div>
+            <button type="button" className="edit-spot-btn mono" onClick={() => setEditOpen(true)}>
+              ✎ Edit Spot
+            </button>
           </div>
           <AircraftTypeLine aircraft={spot.aircraft} />
         </header>
@@ -314,6 +328,15 @@ export default function SpotPage({ spotId: initialSpotId }) {
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
+        />
+      )}
+
+      {editOpen && (
+        <SpotEditModal
+          spot={spot}
+          onClose={() => setEditOpen(false)}
+          onUpdated={setSpot}
+          onMerged={handleEditMerged}
         />
       )}
     </>

@@ -93,9 +93,18 @@ class AircraftCreate(BaseModel):
 
 
 class AircraftUpdate(BaseModel):
-    """Descriptive fields only — registration/serial stay fixed, since they're the
-    identity key behind UNIQUE(aircraft, date) and the reg/serial unique index."""
+    """Full aircraft-record edit, reachable from the spot page's Edit surface.
 
+    registration/serial ARE editable here — but the caller (frontend) must have
+    already resolved the typo-vs-wrong-aircraft ambiguity before calling this:
+    only submit a registration/serial change here once the user has explicitly
+    chosen "fix the typo on this aircraft" (see SpotAircraftReassign for the
+    "wrong aircraft" path instead). The DB's partial unique index still guards
+    against colliding with a different aircraft's identifier either way."""
+
+    registration: Optional[str] = None
+    serial: Optional[str] = None
+    category: Optional[AircraftCategory] = None
     type: Optional[str] = None
     msn: Optional[str] = None
     line_number: Optional[str] = None
@@ -104,6 +113,11 @@ class AircraftUpdate(BaseModel):
     operator: Optional[str] = None
     home_base: Optional[str] = None
     manufacturer: Optional[str] = None
+    # Find-or-create by name against the Manufacturer entity (distinct from the
+    # GA free-text `manufacturer` field above) — "" clears the link, None leaves it alone.
+    manufacturer_name: Optional[str] = None
+    configuration: Optional[GAConfiguration] = None
+    role: Optional[GARole] = None
 
 
 class AircraftSearchResult(BaseModel):
@@ -462,6 +476,25 @@ class SpotDateUpdate(BaseModel):
 class SpotConflict(BaseModel):
     detail: str = "A spot for this aircraft already exists on that date."
     conflicting_spot: SpotOut
+
+
+class SpotAircraftReassign(BaseModel):
+    """Re-point an existing spot at a different aircraft — the "wrong airframe,
+    not a typo" path (see AircraftUpdate for the typo-fix path). Either an
+    existing aircraft_id or a new_aircraft to create and move the spot to.
+
+    If the target aircraft already has a spot on this spot's date, this 409s
+    with SpotConflict — same UNIQUE(aircraft, date) merge-warn used everywhere
+    else; confirm via the existing POST /spots/{id}/merge/{target_id}."""
+
+    aircraft_id: Optional[int] = None
+    new_aircraft: Optional[AircraftCreate] = None
+
+    @model_validator(mode="after")
+    def _require_aircraft(self):
+        if not self.aircraft_id and not self.new_aircraft:
+            raise ValueError("aircraft_id or new_aircraft is required")
+        return self
 
 
 class TrayPhoto(PhotoOut):
