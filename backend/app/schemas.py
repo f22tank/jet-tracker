@@ -76,6 +76,7 @@ class AircraftSpotEntry(BaseModel):
     date: datetime.date
     location_label: str
     operator_label: Optional[str] = None
+    cover_thumbnail: Optional[str] = None
 
 
 class AircraftStats(BaseModel):
@@ -125,12 +126,32 @@ class OperatorCreate(BaseModel):
     home_base: Optional[str] = None
 
 
+class PhotoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    spot_id: Optional[int] = None
+    path: str
+    thumbnail_path: Optional[str] = None
+    original_filename: Optional[str] = None
+    camera: Optional[str] = None
+    lens: Optional[str] = None
+    focal_length: Optional[str] = None
+    aperture: Optional[str] = None
+    shutter: Optional[str] = None
+    iso: Optional[str] = None
+    gps_lat: Optional[float] = None
+    gps_lon: Optional[float] = None
+    taken_at: Optional[datetime.datetime] = None
+
+
 class OperatorSpotEntry(BaseModel):
     id: int
     date: datetime.date
     aircraft_identifier: Optional[str] = None
     aircraft_type: Optional[str] = None
     location_label: str
+    cover_thumbnail: Optional[str] = None
 
 
 class OperatorStats(BaseModel):
@@ -148,6 +169,7 @@ class OperatorOut(BaseModel):
     name: str
     image: Optional[str] = None
     notes: Optional[str] = None
+    bio: Optional[str] = None
 
     iata: Optional[str] = None
     icao: Optional[str] = None
@@ -159,7 +181,15 @@ class OperatorOut(BaseModel):
     parent: Optional[OperatorSummary] = None
     children: list[OperatorSummary] = []
     spots: list[OperatorSpotEntry] = []
+    recent_photos: list[PhotoOut] = []
     stats: OperatorStats
+
+
+class OperatorUpdate(BaseModel):
+    """Only the bio is editable inline on the operator page — everything else
+    (name/iata/etc.) is set at creation time via the tray's tag-new-operator flow."""
+
+    bio: Optional[str] = None
 
 
 class LocationSummary(BaseModel):
@@ -203,6 +233,7 @@ class LocationSpotEntry(BaseModel):
     aircraft_identifier: Optional[str] = None
     aircraft_type: Optional[str] = None
     operator_label: Optional[str] = None
+    cover_thumbnail: Optional[str] = None
 
 
 class LocationStats(BaseModel):
@@ -224,27 +255,33 @@ class LocationOut(BaseModel):
     country: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
+    cover_image: Optional[str] = None
+    cover_image_thumbnail: Optional[str] = None
 
     spots: list[LocationSpotEntry] = []
+    recent_photos: list[PhotoOut] = []
     stats: LocationStats
 
 
-class PhotoOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class LocationUpdate(BaseModel):
+    name: Optional[str] = None
+    icao: Optional[str] = None
+    iata: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+
+
+class LocationRecentCard(BaseModel):
+    """One card in the Home 'recent locations' strip."""
 
     id: int
-    spot_id: Optional[int] = None
-    path: str
-    thumbnail_path: Optional[str] = None
-    camera: Optional[str] = None
-    lens: Optional[str] = None
-    focal_length: Optional[str] = None
-    aperture: Optional[str] = None
-    shutter: Optional[str] = None
-    iso: Optional[str] = None
-    gps_lat: Optional[float] = None
-    gps_lon: Optional[float] = None
-    taken_at: Optional[datetime.datetime] = None
+    name: str
+    icao: Optional[str] = None
+    iata: Optional[str] = None
+    cover_thumbnail: Optional[str] = None
+    spot_count: int
 
 
 class LedgerEntry(BaseModel):

@@ -4,14 +4,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .database import Base, engine, wait_for_db
+from . import storage
+from .database import Base, engine, ensure_new_columns, wait_for_db
 from .routers import aircraft, gallery, locations, map as map_router, operators, photos, spots
 
 wait_for_db()
 Base.metadata.create_all(bind=engine)
+ensure_new_columns()
 
-PHOTOS_DIR = os.getenv("PHOTOS_DIR", "photos")
-os.makedirs(PHOTOS_DIR, exist_ok=True)
+os.makedirs(storage.PHOTOS_DIR, exist_ok=True)
 
 app = FastAPI(title="Jet Tracker API")
 
@@ -23,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/photos", StaticFiles(directory=PHOTOS_DIR), name="photos")
+app.mount("/photos", StaticFiles(directory=storage.PHOTOS_DIR), name="photos")
 
 app.include_router(spots.router)
 app.include_router(photos.router)

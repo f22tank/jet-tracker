@@ -1,23 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, fetchSpot, mergeSpot, photoUrl, updateSpotDate, updateSpotFields } from "../api.js";
+import { formatDate } from "../format.js";
 import AircraftTypeLine from "./AircraftTypeLine.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
 import EditableField from "./EditableField.jsx";
 import LocationField from "./LocationField.jsx";
 import MiniMap from "./MiniMap.jsx";
 import OperatorField from "./OperatorField.jsx";
-
-function formatDate(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatShort(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short" });
-}
 
 export default function SpotPage({ spotId: initialSpotId }) {
   const [spotId, setSpotId] = useState(initialSpotId);
@@ -111,13 +100,13 @@ export default function SpotPage({ spotId: initialSpotId }) {
           </div>
           <div className="nav">
             <button disabled={!prevEntry} onClick={() => prevEntry && navigateTo(prevEntry.id)}>
-              ‹ PREV{prevEntry && <span style={{ color: "var(--steel)" }}>{formatShort(prevEntry.date)}</span>}
+              ‹ PREV{prevEntry && <span style={{ color: "var(--steel)" }}>{formatDate(prevEntry.date)}</span>}
             </button>
             <span className="pos mono">
               {spot.aircraft.identifier} / {ledger.length} spot{ledger.length === 1 ? "" : "s"}
             </span>
             <button disabled={!nextEntry} onClick={() => nextEntry && navigateTo(nextEntry.id)}>
-              {nextEntry && <span style={{ color: "var(--steel)" }}>{formatShort(nextEntry.date)}</span>}NEXT ›
+              {nextEntry && <span style={{ color: "var(--steel)" }}>{formatDate(nextEntry.date)}</span>}NEXT ›
             </button>
           </div>
         </div>
@@ -212,7 +201,14 @@ export default function SpotPage({ spotId: initialSpotId }) {
                   <EditableField label="Livery" value={spot.livery} placeholder="add livery" onSave={(v) => saveField("livery", v)} />
                 </>
               )}
-              <EditableField label="Date" value={spot.date} placeholder="set date" mono onSave={saveDate} />
+              <EditableField
+                label="Date"
+                value={spot.date}
+                displayValue={spot.date ? formatDate(spot.date) : null}
+                placeholder="set date"
+                mono
+                onSave={saveDate}
+              />
               <EditableField label="Notes" value={spot.notes} placeholder="add notes" onSave={(v) => saveField("notes", v)} />
             </div>
           </div>
@@ -274,7 +270,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
               className={`lrow${entry.is_current ? " here" : ""}`}
               onClick={() => !entry.is_current && navigateTo(entry.id)}
             >
-              <span className="ld">{entry.date}</span>
+              <span className="ld">{formatDate(entry.date)}</span>
               <span className="ll">{entry.location_label}</span>
               {entry.is_current ? (
                 <span className="here-tag">◂ you are here</span>

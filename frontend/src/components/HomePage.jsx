@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchGallerySpots, fetchRecentSpots, photoUrl } from "../api.js";
+import { fetchGallerySpots, fetchRecentLocations, fetchRecentSpots, photoUrl } from "../api.js";
+import { formatDate } from "../format.js";
 
 const PAGE_SIZE = 25;
-
-function formatDate(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
-}
 
 function SortHeader({ label, sortKey, sort, order, onSort }) {
   const active = sort === sortKey;
@@ -21,6 +18,9 @@ export default function HomePage() {
   const [recent, setRecent] = useState([]);
   const [recentLoading, setRecentLoading] = useState(true);
 
+  const [recentLocations, setRecentLocations] = useState([]);
+  const [recentLocationsLoading, setRecentLocationsLoading] = useState(true);
+
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("date");
   const [order, setOrder] = useState("desc");
@@ -33,6 +33,12 @@ export default function HomePage() {
     fetchRecentSpots(12)
       .then(setRecent)
       .finally(() => setRecentLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchRecentLocations(8)
+      .then(setRecentLocations)
+      .finally(() => setRecentLocationsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -100,6 +106,35 @@ export default function HomePage() {
       </section>
 
       <section className="home-section">
+        <h2>Recent Locations</h2>
+        {recentLocationsLoading ? (
+          <div className="state-msg mono">Loading…</div>
+        ) : recentLocations.length === 0 ? (
+          <div className="empty-carousel">No locations tagged yet.</div>
+        ) : (
+          <div className="carousel">
+            {recentLocations.map((loc) => (
+              <a key={loc.id} href={`/location?id=${loc.id}`} className="carousel-card">
+                <div className="cc-im">
+                  {loc.cover_thumbnail ? (
+                    <img src={photoUrl(loc.cover_thumbnail)} alt="" />
+                  ) : (
+                    <div className="cc-im-empty">◎</div>
+                  )}
+                </div>
+                <div className="cc-reg">{loc.name}</div>
+                <div className="cc-meta">
+                  <span className="cc-date mono">
+                    {[loc.icao, loc.iata].filter(Boolean).join(" / ") || `${loc.spot_count} spot${loc.spot_count === 1 ? "" : "s"}`}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="home-section">
         <div className="all-spots-head">
           <h2>All Spots</h2>
           <input
@@ -139,7 +174,7 @@ export default function HomePage() {
                   <td>{row.aircraft_type}</td>
                   <td>{row.operator_label || "—"}</td>
                   <td>{row.location_label}</td>
-                  <td className="mono">{row.date}</td>
+                  <td className="mono">{formatDate(row.date)}</td>
                 </tr>
               ))}
             </tbody>

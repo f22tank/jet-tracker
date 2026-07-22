@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
-import { fetchLocation } from "../api.js";
+import {
+  fetchLocation,
+  photoUrl,
+  removeLocationCoverPhoto,
+  updateLocation,
+  uploadLocationCoverPhoto,
+} from "../api.js";
+import { formatDate } from "../format.js";
+import AssetImageUpload from "./AssetImageUpload.jsx";
+import EditableField from "./EditableField.jsx";
 import MiniMap from "./MiniMap.jsx";
 
-function formatDate(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
+function toNullableFloat(v) {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
 }
 
 export default function LocationPage({ locationId }) {
@@ -25,11 +36,35 @@ export default function LocationPage({ locationId }) {
   if (!location) return null;
 
   const { stats } = location;
-  const codes = [location.icao, location.iata].filter(Boolean);
+
+  async function saveField(field, value, { numeric = false } = {}) {
+    const updated = await updateLocation(locationId, { [field]: numeric ? toNullableFloat(value) : value });
+    setLocation(updated);
+  }
+
+  async function handleCoverUpload(file) {
+    const updated = await uploadLocationCoverPhoto(locationId, file);
+    setLocation(updated);
+  }
+
+  async function handleCoverRemove() {
+    const updated = await removeLocationCoverPhoto(locationId);
+    setLocation(updated);
+  }
 
   return (
     <div className="wrap">
       <header className="spot">
+        <div className="loc-cover-wrap">
+          <AssetImageUpload
+            className="asset-upload--loc-cover"
+            src={location.cover_image ? photoUrl(location.cover_image) : null}
+            onUpload={handleCoverUpload}
+            onRemove={location.cover_image ? handleCoverRemove : null}
+            placeholder="+ Add cover photo"
+            alt={location.name}
+          />
+        </div>
         <div className="reg-row">
           <div className="date-block">
             <span className="dl">Location</span>
@@ -38,26 +73,34 @@ export default function LocationPage({ locationId }) {
             </span>
           </div>
         </div>
-        <div className="type-line">
-          {codes.length > 0 && (
-            <span>
-              <b>{codes.join(" / ")}</b>
-            </span>
-          )}
-          {(location.city || location.country) && (
-            <span>
-              {codes.length > 0 && <span className="sep">·</span>}
-              {[location.city, location.country].filter(Boolean).join(", ")}
-            </span>
-          )}
-          {location.lat != null && location.lon != null && (
-            <span>
-              <span className="sep">·</span>
-              {location.lat.toFixed(4)}, {location.lon.toFixed(4)}
-            </span>
-          )}
-        </div>
       </header>
+
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
+          <h2>Details</h2>
+        </div>
+        <div style={{ padding: "4px 18px" }}>
+          <EditableField label="Name" value={location.name} placeholder="add name" onSave={(v) => saveField("name", v)} />
+          <EditableField label="ICAO" value={location.icao} placeholder="add ICAO" mono onSave={(v) => saveField("icao", v)} />
+          <EditableField label="IATA" value={location.iata} placeholder="add IATA" mono onSave={(v) => saveField("iata", v)} />
+          <EditableField label="City" value={location.city} placeholder="add city" onSave={(v) => saveField("city", v)} />
+          <EditableField label="Country" value={location.country} placeholder="add country" onSave={(v) => saveField("country", v)} />
+          <EditableField
+            label="Lat"
+            value={location.lat != null ? String(location.lat) : ""}
+            placeholder="add latitude"
+            mono
+            onSave={(v) => saveField("lat", v, { numeric: true })}
+          />
+          <EditableField
+            label="Lon"
+            value={location.lon != null ? String(location.lon) : ""}
+            placeholder="add longitude"
+            mono
+            onSave={(v) => saveField("lon", v, { numeric: true })}
+          />
+        </div>
+      </div>
 
       <MiniMap lat={location.lat} lon={location.lon} />
 
@@ -90,6 +133,21 @@ export default function LocationPage({ locationId }) {
         </div>
       </div>
 
+      {location.recent_photos.length > 0 && (
+        <div className="ledger" style={{ marginTop: 24 }}>
+          <div className="ledger-head">
+            <h2>Recent Photos</h2>
+          </div>
+          <div className="recent-photos">
+            {location.recent_photos.map((p) => (
+              <a key={p.id} href={`/spot?spot=${p.spot_id}`} className="recent-photo">
+                <img src={photoUrl(p.thumbnail_path || p.path)} alt="" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="ledger" style={{ marginTop: 24 }}>
         <div className="ledger-head">
           <h2>Spots</h2>
@@ -99,8 +157,15 @@ export default function LocationPage({ locationId }) {
         </div>
         {location.spots.length === 0 && <div className="state-msg mono">No spots linked yet.</div>}
         {location.spots.map((entry) => (
-          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow" style={{ textDecoration: "none" }}>
-            <span className="ld">{entry.date}</span>
+          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow lrow--thumb" style={{ textDecoration: "none" }}>
+            <span className="lrow-thumb-wrap">
+              {entry.cover_thumbnail ? (
+                <img className="lrow-thumb" src={photoUrl(entry.cover_thumbnail)} alt="" />
+              ) : (
+                <div className="lrow-thumb-empty">✈</div>
+              )}
+            </span>
+            <span className="ld">{formatDate(entry.date)}</span>
             <span className="ll">
               {entry.aircraft_identifier} · {entry.aircraft_type}
             </span>

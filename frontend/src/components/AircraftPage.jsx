@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { fetchAircraft } from "../api.js";
+import { fetchAircraft, photoUrl } from "../api.js";
+import { formatDate } from "../format.js";
 import AircraftTypeLine from "./AircraftTypeLine.jsx";
 import SpotMap from "./SpotMap.jsx";
-
-function formatDate(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
-}
 
 export default function AircraftPage({ aircraftId }) {
   const [aircraft, setAircraft] = useState(null);
@@ -90,8 +87,15 @@ export default function AircraftPage({ aircraftId }) {
         </div>
         {aircraft.spots.length === 0 && <div className="state-msg mono">No spots linked yet.</div>}
         {aircraft.spots.map((entry) => (
-          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow" style={{ textDecoration: "none" }}>
-            <span className="ld">{entry.date}</span>
+          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow lrow--thumb" style={{ textDecoration: "none" }}>
+            <span className="lrow-thumb-wrap">
+              {entry.cover_thumbnail ? (
+                <img className="lrow-thumb" src={photoUrl(entry.cover_thumbnail)} alt="" />
+              ) : (
+                <div className="lrow-thumb-empty">✈</div>
+              )}
+            </span>
+            <span className="ld">{formatDate(entry.date)}</span>
             <span className="ll">{entry.operator_label || "—"}</span>
             <span className="lc">{entry.location_label}</span>
           </a>

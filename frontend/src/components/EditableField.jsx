@@ -1,6 +1,15 @@
 import { useState } from "react";
 
-export default function EditableField({ label, value, placeholder, onSave, mono = false }) {
+export default function EditableField({
+  label,
+  value,
+  displayValue,
+  placeholder,
+  onSave,
+  mono = false,
+  multiline = false,
+  block = false,
+}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
@@ -30,8 +39,36 @@ export default function EditableField({ label, value, placeholder, onSave, mono 
   }
 
   function onKeyDown(e) {
-    if (e.key === "Enter") commit();
+    if (e.key === "Enter" && !multiline) commit();
     if (e.key === "Escape") setEditing(false);
+  }
+
+  const shown = value ? displayValue ?? value : placeholder;
+
+  if (block) {
+    return (
+      <div className="editable-block">
+        {label && <div className="eb-label">{label}</div>}
+        {editing ? (
+          <div className={`eb-body${saving ? " saving" : ""}`}>
+            <textarea
+              autoFocus
+              value={draft}
+              disabled={saving}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={onKeyDown}
+            />
+            {error && <div className="err">{error}</div>}
+          </div>
+        ) : (
+          <div className={`eb-body eb-click${value ? "" : " empty"}`} onClick={startEdit}>
+            {shown}
+            <span className="edit mono">edit</span>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -39,19 +76,31 @@ export default function EditableField({ label, value, placeholder, onSave, mono 
       <span className="k">{label}</span>
       {editing ? (
         <span className={`v${saving ? " saving" : ""}`}>
-          <input
-            autoFocus
-            value={draft}
-            disabled={saving}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={onKeyDown}
-          />
+          {multiline ? (
+            <textarea
+              autoFocus
+              rows={4}
+              value={draft}
+              disabled={saving}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={onKeyDown}
+            />
+          ) : (
+            <input
+              autoFocus
+              value={draft}
+              disabled={saving}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={onKeyDown}
+            />
+          )}
           {error && <span className="err">{error}</span>}
         </span>
       ) : (
         <span className={`v${value ? "" : " empty"}`} onClick={startEdit}>
-          {mono ? <b>{value || placeholder}</b> : value || placeholder}{" "}
+          {mono ? <b>{shown}</b> : shown}{" "}
           <span className="edit mono">edit</span>
         </span>
       )}

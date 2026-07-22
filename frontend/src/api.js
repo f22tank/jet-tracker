@@ -121,6 +121,36 @@ export function fetchLocation(locationId) {
   return request(`/api/locations/${locationId}`);
 }
 
+export function fetchRecentLocations(limit = 8) {
+  return request(`/api/locations/recent?limit=${limit}`);
+}
+
+export function updateLocation(locationId, fields) {
+  return request(`/api/locations/${locationId}`, {
+    method: "PATCH",
+    body: JSON.stringify(fields),
+  });
+}
+
+async function uploadFile(path, file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE_URL}${path}`, { method: "POST", body: form });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(body?.detail || res.statusText, res.status, body?.detail);
+  }
+  return res.json();
+}
+
+export function uploadLocationCoverPhoto(locationId, file) {
+  return uploadFile(`/api/locations/${locationId}/cover-photo`, file);
+}
+
+export function removeLocationCoverPhoto(locationId) {
+  return request(`/api/locations/${locationId}/cover-photo`, { method: "DELETE" });
+}
+
 export function searchOperators(type, q) {
   return request(`/api/operators/search?type=${type}&q=${encodeURIComponent(q)}`);
 }
@@ -154,6 +184,21 @@ export function fetchAircraft(aircraftId) {
 
 export function fetchOperator(operatorId) {
   return request(`/api/operators/${operatorId}`);
+}
+
+export function updateOperator(operatorId, fields) {
+  return request(`/api/operators/${operatorId}`, {
+    method: "PATCH",
+    body: JSON.stringify(fields),
+  });
+}
+
+export function uploadOperatorLogo(operatorId, file) {
+  return uploadFile(`/api/operators/${operatorId}/logo`, file);
+}
+
+export function removeOperatorLogo(operatorId) {
+  return request(`/api/operators/${operatorId}/logo`, { method: "DELETE" });
 }
 
 export function fetchRecentSpots(limit = 12) {

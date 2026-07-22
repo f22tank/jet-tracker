@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, fetchTray, ingestPhotos, photoUrl, resolvePhotos } from "../api.js";
+import { formatDate } from "../format.js";
 import AircraftTagInput from "./AircraftTagInput.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
 import LocationTagInput from "./LocationTagInput.jsx";
@@ -307,7 +308,7 @@ export default function TrayPage() {
                   <div className="tc-im">
                     <img src={photoUrl(p.thumbnail_path || p.path)} alt="" />
                   </div>
-                  <div className="tc-date mono">{effectiveDate(p)}</div>
+                  <div className="tc-date mono">{formatDate(effectiveDate(p))}</div>
                   <AircraftTagInput onTag={(ref) => handleTagSingle(p, ref)} />
                 </div>
               ))}

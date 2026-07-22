@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { fetchOperator, photoUrl } from "../api.js";
+import { fetchOperator, photoUrl, removeOperatorLogo, updateOperator, uploadOperatorLogo } from "../api.js";
+import { formatDate } from "../format.js";
+import AssetImageUpload from "./AssetImageUpload.jsx";
+import EditableField from "./EditableField.jsx";
 import SpotMap from "./SpotMap.jsx";
-
-function formatDate(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
-}
 
 function DetailLine({ operator }) {
   const parts =
@@ -45,6 +44,21 @@ export default function OperatorPage({ operatorId }) {
 
   const { stats } = operator;
 
+  async function handleLogoUpload(file) {
+    const updated = await uploadOperatorLogo(operatorId, file);
+    setOperator((prev) => ({ ...prev, image: updated.image }));
+  }
+
+  async function handleLogoRemove() {
+    const updated = await removeOperatorLogo(operatorId);
+    setOperator((prev) => ({ ...prev, image: updated.image }));
+  }
+
+  async function saveBio(value) {
+    const updated = await updateOperator(operatorId, { bio: value });
+    setOperator(updated);
+  }
+
   return (
     <div className="wrap">
       <header className="spot">
@@ -56,7 +70,14 @@ export default function OperatorPage({ operatorId }) {
           </div>
         )}
         <div className="reg-row">
-          {operator.image && <img className="op-image" src={photoUrl(operator.image)} alt="" />}
+          <AssetImageUpload
+            className="asset-upload--op-logo"
+            src={operator.image ? photoUrl(operator.image) : null}
+            onUpload={handleLogoUpload}
+            onRemove={operator.image ? handleLogoRemove : null}
+            placeholder="+ Logo"
+            alt={operator.name}
+          />
           <div className="date-block">
             <span className="dl">{operator.type === "airline" ? "Airline" : "Military Unit"}</span>
             <span className="d" style={{ fontSize: 28 }}>
@@ -91,6 +112,36 @@ export default function OperatorPage({ operatorId }) {
           </div>
         </div>
       </div>
+
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
+          <h2>Bio</h2>
+        </div>
+        <div style={{ padding: "14px 18px" }}>
+          <EditableField
+            block
+            value={operator.bio}
+            placeholder="add a write-up — history, notable aircraft, whatever"
+            onSave={saveBio}
+            multiline
+          />
+        </div>
+      </div>
+
+      {operator.recent_photos.length > 0 && (
+        <div className="ledger" style={{ marginTop: 24 }}>
+          <div className="ledger-head">
+            <h2>Recent Photos</h2>
+          </div>
+          <div className="recent-photos">
+            {operator.recent_photos.map((p) => (
+              <a key={p.id} href={`/spot?spot=${p.spot_id}`} className="recent-photo">
+                <img src={photoUrl(p.thumbnail_path || p.path)} alt="" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {operator.children.length > 0 && (
         <div className="ledger" style={{ marginTop: 24 }}>
@@ -130,8 +181,15 @@ export default function OperatorPage({ operatorId }) {
         </div>
         {operator.spots.length === 0 && <div className="state-msg mono">No spots linked yet.</div>}
         {operator.spots.map((entry) => (
-          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow" style={{ textDecoration: "none" }}>
-            <span className="ld">{entry.date}</span>
+          <a key={entry.id} href={`/spot?spot=${entry.id}`} className="lrow lrow--thumb" style={{ textDecoration: "none" }}>
+            <span className="lrow-thumb-wrap">
+              {entry.cover_thumbnail ? (
+                <img className="lrow-thumb" src={photoUrl(entry.cover_thumbnail)} alt="" />
+              ) : (
+                <div className="lrow-thumb-empty">✈</div>
+              )}
+            </span>
+            <span className="ld">{formatDate(entry.date)}</span>
             <span className="ll">
               {entry.aircraft_identifier} · {entry.aircraft_type}
             </span>

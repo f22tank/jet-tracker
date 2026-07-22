@@ -9,6 +9,7 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.heat";
 import { useEffect, useRef, useState } from "react";
 import { fetchMapFacets, fetchMapSpots, photoUrl } from "../api.js";
+import { formatDate } from "../format.js";
 
 // Bundler fix: Leaflet's default icon URLs are relative and break under Vite/webpack.
 delete L.Icon.Default.prototype._getIconUrl;
@@ -34,7 +35,7 @@ function buildPopupContent(group) {
 
     const meta = document.createElement("div");
     meta.className = "mp-meta";
-    meta.textContent = [s.date, s.operator_label].filter(Boolean).join(" · ");
+    meta.textContent = [formatDate(s.date), s.operator_label].filter(Boolean).join(" · ");
     container.appendChild(meta);
 
     const link = document.createElement("a");
@@ -52,7 +53,7 @@ function buildPopupContent(group) {
     for (const s of group) {
       const link = document.createElement("a");
       link.href = `/spot?spot=${s.id}`;
-      link.textContent = `${s.aircraft_identifier || "?"} · ${s.date}`;
+      link.textContent = `${s.aircraft_identifier || "?"} · ${formatDate(s.date)}`;
       list.appendChild(link);
     }
     container.appendChild(list);

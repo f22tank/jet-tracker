@@ -1,7 +1,7 @@
 import os
 import time
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -40,3 +40,30 @@ def wait_for_db(retries: int = 10, delay: float = 3.0) -> None:
             if attempt == retries:
                 raise
             time.sleep(delay)
+
+
+# Columns added to tables that may already exist in a deployed DB. `create_all`
+# only creates missing tables, never adds columns to existing ones — with no
+# Alembic in this project, new nullable columns get an idempotent ALTER here
+# instead. Portable across the sqlite (dev) and MariaDB (prod) backends this
+# app targets.
+_NEW_COLUMNS = {
+    "photos": [("original_filename", "VARCHAR(255) NULL")],
+    "locations": [
+        ("cover_image", "VARCHAR(500) NULL"),
+        ("cover_image_thumbnail", "VARCHAR(500) NULL"),
+    ],
+    "operators": [("bio", "TEXT NULL")],
+}
+
+
+def ensure_new_columns() -> None:
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table, columns in _NEW_COLUMNS.items():
+            if not inspector.has_table(table):
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for name, ddl_type in columns:
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl_type}"))

@@ -96,6 +96,7 @@ class Operator(Base):
     image = Column(String(500), nullable=True)
     parent_operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
     notes = Column(Text, nullable=True)
+    bio = Column(Text, nullable=True)
 
     parent = relationship("Operator", remote_side=[id], back_populates="children")
     children = relationship("Operator", back_populates="parent")
@@ -142,6 +143,8 @@ class Location(Base):
     country = Column(String(100), nullable=True)
     lat = Column(Float, nullable=True)
     lon = Column(Float, nullable=True)
+    cover_image = Column(String(500), nullable=True)
+    cover_image_thumbnail = Column(String(500), nullable=True)
 
     spots = relationship("Spot", back_populates="location")
 
@@ -199,6 +202,7 @@ class Photo(Base):
 
     path = Column(String(500), nullable=False)
     thumbnail_path = Column(String(500), nullable=True)
+    original_filename = Column(String(255), nullable=True)
     camera = Column(String(100), nullable=True)
     lens = Column(String(100), nullable=True)
     focal_length = Column(String(20), nullable=True)

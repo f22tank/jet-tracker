@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from . import models, schemas
+from . import models, schemas, storage
 
 
 def get_spot(db: Session, spot_id: int) -> models.Spot | None:
@@ -50,6 +50,39 @@ def build_ledger(db: Session, aircraft_id: int, current_spot_id: int) -> list[sc
     ]
 
 
+def to_photo_out(photo: models.Photo) -> schemas.PhotoOut:
+    """Photo.path/thumbnail_path are stored relative (no /photos/ prefix, see
+    storage.py) — this is the one place that turns them into servable URLs."""
+    return schemas.PhotoOut(
+        id=photo.id,
+        spot_id=photo.spot_id,
+        path=storage.to_url(photo.path),
+        thumbnail_path=storage.to_url(photo.thumbnail_path),
+        original_filename=photo.original_filename,
+        camera=photo.camera,
+        lens=photo.lens,
+        focal_length=photo.focal_length,
+        aperture=photo.aperture,
+        shutter=photo.shutter,
+        iso=photo.iso,
+        gps_lat=photo.gps_lat,
+        gps_lon=photo.gps_lon,
+        taken_at=photo.taken_at,
+    )
+
+
+def _recent_photos(spots: list[models.Spot], limit: int = 4) -> list[schemas.PhotoOut]:
+    """One representative photo (cover, else first) per spot, for spots already
+    ordered most-recent-first — used for the operator/location "recent photos" strips."""
+    photos = []
+    for s in spots:
+        if s.photos:
+            photos.append(to_photo_out(s.cover_photo or s.photos[0]))
+        if len(photos) >= limit:
+            break
+    return photos
+
+
 def to_spot_out(db: Session, spot: models.Spot) -> schemas.SpotOut:
     return schemas.SpotOut(
         id=spot.id,
@@ -66,7 +99,7 @@ def to_spot_out(db: Session, spot: models.Spot) -> schemas.SpotOut:
         location=schemas.LocationSummary.model_validate(spot.location) if spot.location else None,
         spot_lat=spot.spot_lat,
         spot_lon=spot.spot_lon,
-        photos=[schemas.PhotoOut.model_validate(p) for p in spot.photos],
+        photos=[to_photo_out(p) for p in spot.photos],
         ledger=build_ledger(db, spot.aircraft_id, spot.id),
     )
 
@@ -157,6 +190,42 @@ def list_locations(db: Session) -> list[schemas.LocationListEntry]:
     ]
 
 
+def update_location_fields(db: Session, location: models.Location, update: schemas.LocationUpdate) -> models.Location:
+    data = update.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(location, field, value)
+    db.commit()
+    db.refresh(location)
+    return location
+
+
+def get_recent_locations(db: Session, limit: int = 8) -> list[models.Location]:
+    """Locations ordered by their most recent spot's date — same "what have I been
+    catching lately" semantics as get_recent_spots, applied to place instead of spot."""
+    last_spot_date = func.max(models.Spot.date)
+    rows = (
+        db.query(models.Location, last_spot_date)
+        .join(models.Spot, models.Spot.location_id == models.Location.id)
+        .group_by(models.Location.id)
+        .order_by(last_spot_date.desc())
+        .limit(limit)
+        .all()
+    )
+    return [loc for loc, _ in rows]
+
+
+def to_location_card(db: Session, location: models.Location) -> schemas.LocationRecentCard:
+    spot_count = db.query(func.count(models.Spot.id)).filter(models.Spot.location_id == location.id).scalar()
+    return schemas.LocationRecentCard(
+        id=location.id,
+        name=location.name,
+        icao=location.icao,
+        iata=location.iata,
+        cover_thumbnail=storage.to_url(location.cover_image_thumbnail or location.cover_image),
+        spot_count=spot_count or 0,
+    )
+
+
 def to_location_out(db: Session, location: models.Location) -> schemas.LocationOut:
     spots = (
         db.query(models.Spot)
@@ -171,6 +240,7 @@ def to_location_out(db: Session, location: models.Location) -> schemas.LocationO
             aircraft_identifier=s.aircraft.identifier,
             aircraft_type=s.aircraft.type,
             operator_label=s.operator.name if s.operator else (s.airline or s.unit),
+            cover_thumbnail=_spot_cover_thumbnail(s),
         )
         for s in spots
     ]
@@ -191,7 +261,10 @@ def to_location_out(db: Session, location: models.Location) -> schemas.LocationO
         country=location.country,
         lat=location.lat,
         lon=location.lon,
+        cover_image=storage.to_url(location.cover_image),
+        cover_image_thumbnail=storage.to_url(location.cover_image_thumbnail),
         spots=spot_entries,
+        recent_photos=_recent_photos(spots),
         stats=stats,
     )
 
@@ -242,7 +315,7 @@ def to_operator_summary(operator: models.Operator) -> schemas.OperatorSummary:
         id=operator.id,
         type=operator.type,
         name=operator.name,
-        image=operator.image,
+        image=storage.to_url(operator.image),
         **_operator_detail_fields(operator),
     )
 
@@ -305,6 +378,15 @@ def find_or_create_operator(db: Session, payload: schemas.OperatorCreate) -> mod
     return create_operator(db, payload)
 
 
+def update_operator_fields(db: Session, operator: models.Operator, update: schemas.OperatorUpdate) -> models.Operator:
+    data = update.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(operator, field, value)
+    db.commit()
+    db.refresh(operator)
+    return operator
+
+
 def to_operator_out(db: Session, operator: models.Operator) -> schemas.OperatorOut:
     spots = (
         db.query(models.Spot)
@@ -319,6 +401,7 @@ def to_operator_out(db: Session, operator: models.Operator) -> schemas.OperatorO
             aircraft_identifier=s.aircraft.identifier,
             aircraft_type=s.aircraft.type,
             location_label=_location_label(s),
+            cover_thumbnail=_spot_cover_thumbnail(s),
         )
         for s in spots
     ]
@@ -335,11 +418,13 @@ def to_operator_out(db: Session, operator: models.Operator) -> schemas.OperatorO
         id=operator.id,
         type=operator.type,
         name=operator.name,
-        image=operator.image,
+        image=storage.to_url(operator.image),
         notes=operator.notes,
+        bio=operator.bio,
         parent=to_operator_summary(operator.parent) if operator.parent else None,
         children=[to_operator_summary(c) for c in operator.children],
         spots=spot_entries,
+        recent_photos=_recent_photos(spots),
         stats=stats,
         **detail,
     )
@@ -403,6 +488,7 @@ def to_aircraft_detail(db: Session, aircraft: models.Aircraft) -> schemas.Aircra
             date=s.date,
             location_label=_location_label(s),
             operator_label=_operator_label_for(s),
+            cover_thumbnail=_spot_cover_thumbnail(s),
         )
         for s in spots
     ]
@@ -518,7 +604,7 @@ def resolve_photos(db: Session, resolve: schemas.PhotoResolve) -> tuple[models.S
 
 def _spot_cover_thumbnail(spot: models.Spot) -> str | None:
     if spot.cover_photo:
-        return spot.cover_photo.thumbnail_path or spot.cover_photo.path
+        return storage.to_url(spot.cover_photo.thumbnail_path or spot.cover_photo.path)
     return None
 
 
@@ -548,7 +634,7 @@ def to_gallery_card(spot: models.Spot) -> schemas.GallerySpotCard:
         aircraft_identifier=spot.aircraft.identifier,
         cover_thumbnail=_spot_cover_thumbnail(spot),
         operator_name=_operator_label_for(spot),
-        operator_image=spot.operator.image if spot.operator else None,
+        operator_image=storage.to_url(spot.operator.image) if spot.operator else None,
     )
 
 
