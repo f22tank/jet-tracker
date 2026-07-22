@@ -4,9 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .database import Base, engine
+from .database import Base, engine, wait_for_db
 from .routers import aircraft, gallery, locations, map as map_router, operators, photos, spots
 
+wait_for_db()
 Base.metadata.create_all(bind=engine)
 
 PHOTOS_DIR = os.getenv("PHOTOS_DIR", "photos")

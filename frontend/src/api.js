@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Empty by default: in production, nginx serves the app and proxies /api + /photos
+// to the api container on the same origin, so relative URLs just work regardless of
+// hostname (localhost, LAN IP, or VPN address). Set VITE_API_BASE_URL only for local
+// dev against a Vite dev server that isn't behind that proxy (e.g. "http://localhost:8000").
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 class ApiError extends Error {
   constructor(message, status, body) {

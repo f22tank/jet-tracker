@@ -50,20 +50,20 @@ class Aircraft(Base):
     category = Column(Enum(AircraftCategory, name="aircraft_category"), nullable=False)
 
     # commercial / ga
-    registration = Column(String, nullable=True)
-    type = Column(String, nullable=True)
-    msn = Column(String, nullable=True)
-    line_number = Column(String, nullable=True)
+    registration = Column(String(20), nullable=True)
+    type = Column(String(100), nullable=True)
+    msn = Column(String(50), nullable=True)
+    line_number = Column(String(50), nullable=True)
     first_flight = Column(Integer, nullable=True)
 
     # military
-    serial = Column(String, nullable=True)
-    variant = Column(String, nullable=True)
-    operator = Column(String, nullable=True)
-    home_base = Column(String, nullable=True)
+    serial = Column(String(20), nullable=True)
+    variant = Column(String(50), nullable=True)
+    operator = Column(String(100), nullable=True)
+    home_base = Column(String(100), nullable=True)
 
     # ga
-    manufacturer = Column(String, nullable=True)
+    manufacturer = Column(String(100), nullable=True)
     configuration = Column(Enum(GAConfiguration, name="ga_configuration"), nullable=True)
     role = Column(Enum(GARole, name="ga_role"), nullable=True)
 
@@ -92,8 +92,8 @@ class Operator(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     type = Column(Enum(OperatorType, name="operator_type"), nullable=False)
-    name = Column(String, nullable=False)
-    image = Column(String, nullable=True)
+    name = Column(String(255), nullable=False)
+    image = Column(String(500), nullable=True)
     parent_operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
     notes = Column(Text, nullable=True)
 
@@ -113,9 +113,9 @@ class AirlineDetail(Base):
     __tablename__ = "airline_details"
 
     operator_id = Column(Integer, ForeignKey("operators.id"), primary_key=True)
-    iata = Column(String, nullable=True)
-    icao = Column(String, nullable=True)
-    callsign = Column(String, nullable=True)
+    iata = Column(String(10), nullable=True)
+    icao = Column(String(10), nullable=True)
+    callsign = Column(String(100), nullable=True)
 
     operator = relationship("Operator", back_populates="airline_detail")
 
@@ -124,9 +124,9 @@ class UnitDetail(Base):
     __tablename__ = "unit_details"
 
     operator_id = Column(Integer, ForeignKey("operators.id"), primary_key=True)
-    branch = Column(String, nullable=True)
-    tail_code = Column(String, nullable=True)
-    home_base = Column(String, nullable=True)
+    branch = Column(String(100), nullable=True)
+    tail_code = Column(String(10), nullable=True)
+    home_base = Column(String(100), nullable=True)
 
     operator = relationship("Operator", back_populates="unit_detail")
 
@@ -135,11 +135,11 @@ class Location(Base):
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    icao = Column(String, nullable=True)
-    iata = Column(String, nullable=True)
-    name = Column(String, nullable=False)
-    city = Column(String, nullable=True)
-    country = Column(String, nullable=True)
+    icao = Column(String(10), nullable=True)
+    iata = Column(String(10), nullable=True)
+    name = Column(String(255), nullable=False)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
     lat = Column(Float, nullable=True)
     lon = Column(Float, nullable=True)
 
@@ -164,13 +164,13 @@ class Spot(Base):
 
     # Legacy free-text fallback, kept for one release post-migration — superseded by
     # operator_id for commercial (airline) / military (unit). Not written by new code paths.
-    airline = Column(String, nullable=True)
-    unit = Column(String, nullable=True)
+    airline = Column(String(255), nullable=True)
+    unit = Column(String(255), nullable=True)
 
-    livery = Column(String, nullable=True)
+    livery = Column(String(255), nullable=True)
     # ga — stays free-text per brief (one-offs, not worth an Operator record)
-    owner = Column(String, nullable=True)
-    markings = Column(String, nullable=True)
+    owner = Column(String(255), nullable=True)
+    markings = Column(String(255), nullable=True)
 
     notes = Column(Text, nullable=True)
 
@@ -197,14 +197,14 @@ class Photo(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     spot_id = Column(Integer, ForeignKey("spots.id"), nullable=True)
 
-    path = Column(String, nullable=False)
-    thumbnail_path = Column(String, nullable=True)
-    camera = Column(String, nullable=True)
-    lens = Column(String, nullable=True)
-    focal_length = Column(String, nullable=True)
-    aperture = Column(String, nullable=True)
-    shutter = Column(String, nullable=True)
-    iso = Column(String, nullable=True)
+    path = Column(String(500), nullable=False)
+    thumbnail_path = Column(String(500), nullable=True)
+    camera = Column(String(100), nullable=True)
+    lens = Column(String(100), nullable=True)
+    focal_length = Column(String(20), nullable=True)
+    aperture = Column(String(20), nullable=True)
+    shutter = Column(String(20), nullable=True)
+    iso = Column(String(20), nullable=True)
     gps_lat = Column(Float, nullable=True)
     gps_lon = Column(Float, nullable=True)
     taken_at = Column(DateTime, nullable=True)
