@@ -62,12 +62,19 @@ class Aircraft(Base):
     operator = Column(String(100), nullable=True)
     home_base = Column(String(100), nullable=True)
 
-    # ga
+    # ga — free-text, distinct from manufacturer_id below (GA one-offs aren't worth
+    # forcing through the Manufacturer entity; left as-is, not touched by that migration)
     manufacturer = Column(String(100), nullable=True)
     configuration = Column(Enum(GAConfiguration, name="ga_configuration"), nullable=True)
     role = Column(Enum(GARole, name="ga_role"), nullable=True)
 
+    # cross-category link to the Manufacturer entity, populated by migrate_manufacturers
+    # (parsed from `type`) — named manufacturer_entity to avoid colliding with the GA
+    # free-text `manufacturer` column above.
+    manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"), nullable=True)
+
     spots = relationship("Spot", back_populates="aircraft", order_by="Spot.date")
+    manufacturer_entity = relationship("Manufacturer", back_populates="aircraft")
 
     __table_args__ = (
         # Identity is per-category: military aircraft are keyed by serial, everyone else by reg.
@@ -214,3 +221,15 @@ class Photo(Base):
     taken_at = Column(DateTime, nullable=True)
 
     spot = relationship("Spot", back_populates="photos", foreign_keys=[spot_id])
+
+
+class Manufacturer(Base):
+    __tablename__ = "manufacturers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False, unique=True)
+    logo = Column(String(500), nullable=True)
+    country = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    aircraft = relationship("Aircraft", back_populates="manufacturer_entity")

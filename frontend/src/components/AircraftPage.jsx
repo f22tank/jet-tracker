@@ -34,6 +34,13 @@ export default function AircraftPage({ aircraftId }) {
           </div>
         </div>
         <AircraftTypeLine aircraft={aircraft} />
+        {aircraft.manufacturer_entity && (
+          <div className="type-line" style={{ marginTop: 4 }}>
+            <a href={`/manufacturer?id=${aircraft.manufacturer_entity.id}`} style={{ color: "var(--sky)" }}>
+              {aircraft.manufacturer_entity.name}
+            </a>
+          </div>
+        )}
       </header>
 
       <div className="ledger" style={{ marginTop: 24 }}>

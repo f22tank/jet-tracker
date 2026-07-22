@@ -6,6 +6,15 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from .models import AircraftCategory, GAConfiguration, GARole, OperatorType
 
 
+class ManufacturerSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    logo: Optional[str] = None
+    country: Optional[str] = None
+
+
 class AircraftOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,10 +35,13 @@ class AircraftOut(BaseModel):
     operator: Optional[str] = None
     home_base: Optional[str] = None
 
-    # ga
+    # ga — free-text, distinct from manufacturer_entity below
     manufacturer: Optional[str] = None
     configuration: Optional[GAConfiguration] = None
     role: Optional[GARole] = None
+
+    # cross-category link to the Manufacturer entity (see models.Aircraft.manufacturer_entity)
+    manufacturer_entity: Optional[ManufacturerSummary] = None
 
 
 class AircraftCreate(BaseModel):
@@ -90,6 +102,71 @@ class AircraftStats(BaseModel):
 class AircraftDetailOut(AircraftOut):
     spots: list[AircraftSpotEntry] = []
     stats: AircraftStats
+
+
+class AircraftTableRow(BaseModel):
+    """One row in the Aircraft tab's full table (search/sort/paginate, like All Spots)."""
+
+    id: int
+    identifier: Optional[str] = None
+    type: Optional[str] = None
+    category: AircraftCategory
+    manufacturer_name: Optional[str] = None
+    operator_label: Optional[str] = None
+    spot_count: int
+    last_date: Optional[datetime.date] = None
+
+
+class AircraftTableResponse(BaseModel):
+    items: list[AircraftTableRow]
+    total: int
+    page: int
+    page_size: int
+
+
+class ManufacturerAircraftEntry(BaseModel):
+    id: int
+    identifier: Optional[str] = None
+    type: Optional[str] = None
+    category: AircraftCategory
+
+
+class ManufacturerSpotEntry(BaseModel):
+    id: int
+    date: datetime.date
+    aircraft_identifier: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    cover_thumbnail: Optional[str] = None
+
+
+class ManufacturerStats(BaseModel):
+    aircraft_count: int
+    spot_count: int
+    type_count: int
+
+
+class ManufacturerListEntry(BaseModel):
+    id: int
+    name: str
+    logo: Optional[str] = None
+    country: Optional[str] = None
+    aircraft_count: int
+
+
+class ManufacturerOut(BaseModel):
+    id: int
+    name: str
+    logo: Optional[str] = None
+    country: Optional[str] = None
+    notes: Optional[str] = None
+    aircraft: list[ManufacturerAircraftEntry] = []
+    recent_spots: list[ManufacturerSpotEntry] = []
+    stats: ManufacturerStats
+
+
+class ManufacturerUpdate(BaseModel):
+    country: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class OperatorSummary(BaseModel):
@@ -190,6 +267,20 @@ class OperatorUpdate(BaseModel):
     (name/iata/etc.) is set at creation time via the tray's tag-new-operator flow."""
 
     bio: Optional[str] = None
+
+
+class OperatorListEntry(BaseModel):
+    """One row in the Operators tab (Military / Airlines sub-tabs, filtered by type)."""
+
+    id: int
+    type: OperatorType
+    name: str
+    image: Optional[str] = None
+    iata: Optional[str] = None
+    icao: Optional[str] = None
+    branch: Optional[str] = None
+    tail_code: Optional[str] = None
+    spot_count: int
 
 
 class LocationSummary(BaseModel):
@@ -423,3 +514,37 @@ class MapFacets(BaseModel):
     aircraft_types: list[str]
     operators: list[MapFacetOperator]
     locations: list[MapFacetLocation]
+
+
+class HeadlineStats(BaseModel):
+    """The four big numbers on Home — see StatsOut for the detailed breakdowns."""
+
+    total_spots: int
+    distinct_aircraft: int
+    distinct_operators: int
+    distinct_locations: int
+
+
+class CategoryCount(BaseModel):
+    category: AircraftCategory
+    count: int
+
+
+class TopEntity(BaseModel):
+    id: int
+    name: str
+    spot_count: int
+
+
+class YearCount(BaseModel):
+    year: int
+    count: int
+
+
+class StatsOut(BaseModel):
+    headline: HeadlineStats
+    category_counts: list[CategoryCount]
+    top_operators: list[TopEntity]
+    top_locations: list[TopEntity]
+    top_manufacturers: list[TopEntity]
+    spots_by_year: list[YearCount]

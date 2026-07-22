@@ -54,6 +54,7 @@ _NEW_COLUMNS = {
         ("cover_image_thumbnail", "VARCHAR(500) NULL"),
     ],
     "operators": [("bio", "TEXT NULL")],
+    "aircraft": [("manufacturer_id", "INTEGER NULL")],
 }
 
 

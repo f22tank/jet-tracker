@@ -6,7 +6,17 @@ from fastapi.staticfiles import StaticFiles
 
 from . import storage
 from .database import Base, engine, ensure_new_columns, wait_for_db
-from .routers import aircraft, gallery, locations, map as map_router, operators, photos, spots
+from .routers import (
+    aircraft,
+    gallery,
+    locations,
+    manufacturers,
+    map as map_router,
+    operators,
+    photos,
+    spots,
+    stats,
+)
 
 wait_for_db()
 Base.metadata.create_all(bind=engine)
@@ -31,8 +41,10 @@ app.include_router(photos.router)
 app.include_router(aircraft.router)
 app.include_router(locations.router)
 app.include_router(operators.router)
+app.include_router(manufacturers.router)
 app.include_router(gallery.router)
 app.include_router(map_router.router)
+app.include_router(stats.router)
 
 
 @app.get("/api/health")

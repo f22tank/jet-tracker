@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -20,6 +22,20 @@ def find(value: str, db: Session = Depends(get_db)):
     the tagging UI should fall through to 'create new aircraft' in that case."""
     aircraft = crud.find_aircraft_by_identifier(db, value)
     return schemas.AircraftSearchResult.model_validate(aircraft) if aircraft else None
+
+
+@router.get("/table", response_model=schemas.AircraftTableResponse)
+def table(
+    q: str = "",
+    sort: Literal["identifier", "type", "category", "manufacturer", "spot_count", "last_date"] = "identifier",
+    order: Literal["asc", "desc"] = "asc",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """The Aircraft tab: search+sort+paginate over every aircraft, same shape as All Spots."""
+    items, total = crud.search_aircraft_table(db, q=q, sort=sort, order=order, page=page, page_size=page_size)
+    return schemas.AircraftTableResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post("", response_model=schemas.AircraftOut)

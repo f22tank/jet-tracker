@@ -210,4 +210,40 @@ export function fetchGallerySpots({ q = "", sort = "date", order = "desc", page 
   return request(`/api/gallery/spots?${params.toString()}`);
 }
 
+export function fetchOperatorsList(type) {
+  return request(`/api/operators?type=${type}`);
+}
+
+export function fetchAircraftTable({ q = "", sort = "identifier", order = "asc", page = 1, pageSize = 25 } = {}) {
+  const params = new URLSearchParams({ q, sort, order, page: String(page), page_size: String(pageSize) });
+  return request(`/api/aircraft/table?${params.toString()}`);
+}
+
+export function fetchManufacturersList() {
+  return request("/api/manufacturers");
+}
+
+export function fetchManufacturer(manufacturerId) {
+  return request(`/api/manufacturers/${manufacturerId}`);
+}
+
+export function updateManufacturer(manufacturerId, fields) {
+  return request(`/api/manufacturers/${manufacturerId}`, {
+    method: "PATCH",
+    body: JSON.stringify(fields),
+  });
+}
+
+export function uploadManufacturerLogo(manufacturerId, file) {
+  return uploadFile(`/api/manufacturers/${manufacturerId}/logo`, file);
+}
+
+export function removeManufacturerLogo(manufacturerId) {
+  return request(`/api/manufacturers/${manufacturerId}/logo`, { method: "DELETE" });
+}
+
+export function fetchStats() {
+  return request("/api/stats");
+}
+
 export { ApiError };

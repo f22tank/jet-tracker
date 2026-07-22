@@ -32,6 +32,12 @@ def find(type: OperatorType, value: str, db: Session = Depends(get_db)):
     return crud.to_operator_summary(operator) if operator else None
 
 
+@router.get("", response_model=list[schemas.OperatorListEntry])
+def list_all(type: OperatorType, db: Session = Depends(get_db)):
+    """The Operators tab: Military/Airlines sub-tabs are just this endpoint scoped by type."""
+    return crud.list_operators(db, type)
+
+
 @router.post("", response_model=schemas.OperatorSummary)
 def create(payload: schemas.OperatorCreate, db: Session = Depends(get_db)):
     try:

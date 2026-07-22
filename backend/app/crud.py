@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import func
+from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
 from . import models, schemas, storage
@@ -378,6 +378,34 @@ def find_or_create_operator(db: Session, payload: schemas.OperatorCreate) -> mod
     return create_operator(db, payload)
 
 
+def list_operators(db: Session, type_: models.OperatorType) -> list[schemas.OperatorListEntry]:
+    """The Operators tab's Military/Airlines sub-tabs — same component, scoped by type."""
+    operators = db.query(models.Operator).filter(models.Operator.type == type_).order_by(models.Operator.name).all()
+    counts = dict(
+        db.query(models.Spot.operator_id, func.count(models.Spot.id))
+        .filter(models.Spot.operator_id.isnot(None))
+        .group_by(models.Spot.operator_id)
+        .all()
+    )
+    result = []
+    for o in operators:
+        detail = _operator_detail_fields(o)
+        result.append(
+            schemas.OperatorListEntry(
+                id=o.id,
+                type=o.type,
+                name=o.name,
+                image=storage.to_url(o.image),
+                iata=detail.get("iata"),
+                icao=detail.get("icao"),
+                branch=detail.get("branch"),
+                tail_code=detail.get("tail_code"),
+                spot_count=counts.get(o.id, 0),
+            )
+        )
+    return result
+
+
 def update_operator_fields(db: Session, operator: models.Operator, update: schemas.OperatorUpdate) -> models.Operator:
     data = update.model_dump(exclude_unset=True)
     for field, value in data.items():
@@ -503,6 +531,162 @@ def to_aircraft_detail(db: Session, aircraft: models.Aircraft) -> schemas.Aircra
     return schemas.AircraftDetailOut(
         **schemas.AircraftOut.model_validate(aircraft).model_dump(),
         spots=spot_entries,
+        stats=stats,
+    )
+
+
+def search_aircraft_table(
+    db: Session, q: str = "", sort: str = "identifier", order: str = "asc", page: int = 1, page_size: int = 25
+) -> tuple[list[schemas.AircraftTableRow], int]:
+    """The Aircraft tab: same search+sort+paginate shape as All Spots, but one row
+    per aircraft. spot_count/last_date/operator_label are cheap to compute in Python
+    off the already-small aircraft set rather than a multi-way SQL aggregate."""
+    query = db.query(models.Aircraft).outerjoin(
+        models.Manufacturer, models.Aircraft.manufacturer_id == models.Manufacturer.id
+    )
+    q = q.strip()
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            models.Aircraft.registration.ilike(like)
+            | models.Aircraft.serial.ilike(like)
+            | models.Aircraft.type.ilike(like)
+            | models.Manufacturer.name.ilike(like)
+        )
+
+    rows = []
+    for a in query.all():
+        spots = a.spots  # relationship is order_by Spot.date ascending
+        last_spot = spots[-1] if spots else None
+        rows.append(
+            schemas.AircraftTableRow(
+                id=a.id,
+                identifier=a.identifier,
+                type=a.type,
+                category=a.category,
+                manufacturer_name=a.manufacturer_entity.name if a.manufacturer_entity else None,
+                operator_label=_operator_label_for(last_spot) if last_spot else None,
+                spot_count=len(spots),
+                last_date=last_spot.date if last_spot else None,
+            )
+        )
+
+    sort_key = {
+        "identifier": lambda r: (r.identifier or "").lower(),
+        "type": lambda r: (r.type or "").lower(),
+        "category": lambda r: r.category.value,
+        "manufacturer": lambda r: (r.manufacturer_name or "").lower(),
+        "spot_count": lambda r: r.spot_count,
+        "last_date": lambda r: r.last_date or datetime.date.min,
+    }.get(sort, lambda r: (r.identifier or "").lower())
+    rows.sort(key=sort_key, reverse=(order == "desc"))
+
+    total = len(rows)
+    start = (page - 1) * page_size
+    return rows[start : start + page_size], total
+
+
+# ---- manufacturers ----
+
+
+def get_manufacturer(db: Session, manufacturer_id: int) -> models.Manufacturer | None:
+    return db.query(models.Manufacturer).filter(models.Manufacturer.id == manufacturer_id).first()
+
+
+def find_or_create_manufacturer(db: Session, name: str) -> models.Manufacturer:
+    existing = db.query(models.Manufacturer).filter(models.Manufacturer.name == name).first()
+    if existing:
+        return existing
+    manufacturer = models.Manufacturer(name=name)
+    db.add(manufacturer)
+    db.commit()
+    db.refresh(manufacturer)
+    return manufacturer
+
+
+def list_manufacturers(db: Session) -> list[schemas.ManufacturerListEntry]:
+    manufacturers = db.query(models.Manufacturer).order_by(models.Manufacturer.name).all()
+    counts = dict(
+        db.query(models.Aircraft.manufacturer_id, func.count(models.Aircraft.id))
+        .filter(models.Aircraft.manufacturer_id.isnot(None))
+        .group_by(models.Aircraft.manufacturer_id)
+        .all()
+    )
+    return [
+        schemas.ManufacturerListEntry(
+            id=m.id,
+            name=m.name,
+            logo=storage.to_url(m.logo),
+            country=m.country,
+            aircraft_count=counts.get(m.id, 0),
+        )
+        for m in manufacturers
+    ]
+
+
+def update_manufacturer_fields(
+    db: Session, manufacturer: models.Manufacturer, update: schemas.ManufacturerUpdate
+) -> models.Manufacturer:
+    data = update.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(manufacturer, field, value)
+    db.commit()
+    db.refresh(manufacturer)
+    return manufacturer
+
+
+def to_manufacturer_out(db: Session, manufacturer: models.Manufacturer) -> schemas.ManufacturerOut:
+    aircraft_list = (
+        db.query(models.Aircraft)
+        .filter(models.Aircraft.manufacturer_id == manufacturer.id)
+        .order_by(models.Aircraft.id.desc())
+        .all()
+    )
+    aircraft_entries = [
+        schemas.ManufacturerAircraftEntry(id=a.id, identifier=a.identifier, type=a.type, category=a.category)
+        for a in aircraft_list
+    ]
+    aircraft_ids = [a.id for a in aircraft_list]
+
+    spots = (
+        db.query(models.Spot)
+        .filter(models.Spot.aircraft_id.in_(aircraft_ids))
+        .order_by(models.Spot.date.desc())
+        .limit(8)
+        .all()
+        if aircraft_ids
+        else []
+    )
+    spot_entries = [
+        schemas.ManufacturerSpotEntry(
+            id=s.id,
+            date=s.date,
+            aircraft_identifier=s.aircraft.identifier,
+            aircraft_type=s.aircraft.type,
+            cover_thumbnail=_spot_cover_thumbnail(s),
+        )
+        for s in spots
+    ]
+
+    spot_count = (
+        (db.query(func.count(models.Spot.id)).filter(models.Spot.aircraft_id.in_(aircraft_ids)).scalar() or 0)
+        if aircraft_ids
+        else 0
+    )
+    stats = schemas.ManufacturerStats(
+        aircraft_count=len(aircraft_list),
+        spot_count=spot_count,
+        type_count=len({a.type for a in aircraft_list if a.type}),
+    )
+
+    return schemas.ManufacturerOut(
+        id=manufacturer.id,
+        name=manufacturer.name,
+        logo=storage.to_url(manufacturer.logo),
+        country=manufacturer.country,
+        notes=manufacturer.notes,
+        aircraft=aircraft_entries,
+        recent_spots=spot_entries,
         stats=stats,
     )
 
@@ -803,4 +987,86 @@ def get_map_facets(db: Session) -> schemas.MapFacets:
         aircraft_types=types,
         operators=[schemas.MapFacetOperator(id=o.id, name=o.name, type=o.type) for o in operators],
         locations=[schemas.MapFacetLocation(id=loc.id, name=loc.name) for loc in locations],
+    )
+
+
+# ---- stats (Home headline numbers + the Stats tab's detailed breakdowns) ----
+
+
+def get_headline_stats(db: Session) -> schemas.HeadlineStats:
+    total_spots = db.query(func.count(models.Spot.id)).scalar() or 0
+    distinct_aircraft = db.query(func.count(func.distinct(models.Spot.aircraft_id))).scalar() or 0
+    distinct_operators = (
+        db.query(func.count(func.distinct(models.Spot.operator_id)))
+        .filter(models.Spot.operator_id.isnot(None))
+        .scalar()
+        or 0
+    )
+    distinct_locations = (
+        db.query(func.count(func.distinct(models.Spot.location_id)))
+        .filter(models.Spot.location_id.isnot(None))
+        .scalar()
+        or 0
+    )
+    return schemas.HeadlineStats(
+        total_spots=total_spots,
+        distinct_aircraft=distinct_aircraft,
+        distinct_operators=distinct_operators,
+        distinct_locations=distinct_locations,
+    )
+
+
+def get_stats(db: Session) -> schemas.StatsOut:
+    headline = get_headline_stats(db)
+
+    category_rows = (
+        db.query(models.Aircraft.category, func.count(models.Spot.id))
+        .join(models.Spot, models.Spot.aircraft_id == models.Aircraft.id)
+        .group_by(models.Aircraft.category)
+        .all()
+    )
+    category_counts = [schemas.CategoryCount(category=cat, count=count) for cat, count in category_rows]
+
+    top_operator_rows = (
+        db.query(models.Operator.id, models.Operator.name, func.count(models.Spot.id))
+        .join(models.Spot, models.Spot.operator_id == models.Operator.id)
+        .group_by(models.Operator.id)
+        .order_by(func.count(models.Spot.id).desc())
+        .limit(10)
+        .all()
+    )
+    top_operators = [schemas.TopEntity(id=i, name=n, spot_count=c) for i, n, c in top_operator_rows]
+
+    top_location_rows = (
+        db.query(models.Location.id, models.Location.name, func.count(models.Spot.id))
+        .join(models.Spot, models.Spot.location_id == models.Location.id)
+        .group_by(models.Location.id)
+        .order_by(func.count(models.Spot.id).desc())
+        .limit(10)
+        .all()
+    )
+    top_locations = [schemas.TopEntity(id=i, name=n, spot_count=c) for i, n, c in top_location_rows]
+
+    top_manufacturer_rows = (
+        db.query(models.Manufacturer.id, models.Manufacturer.name, func.count(models.Spot.id))
+        .join(models.Aircraft, models.Aircraft.manufacturer_id == models.Manufacturer.id)
+        .join(models.Spot, models.Spot.aircraft_id == models.Aircraft.id)
+        .group_by(models.Manufacturer.id)
+        .order_by(func.count(models.Spot.id).desc())
+        .limit(10)
+        .all()
+    )
+    top_manufacturers = [schemas.TopEntity(id=i, name=n, spot_count=c) for i, n, c in top_manufacturer_rows]
+
+    year_expr = extract("year", models.Spot.date)
+    year_rows = db.query(year_expr, func.count(models.Spot.id)).group_by(year_expr).order_by(year_expr).all()
+    spots_by_year = [schemas.YearCount(year=int(yr), count=count) for yr, count in year_rows if yr is not None]
+
+    return schemas.StatsOut(
+        headline=headline,
+        category_counts=category_counts,
+        top_operators=top_operators,
+        top_locations=top_locations,
+        top_manufacturers=top_manufacturers,
+        spots_by_year=spots_by_year,
     )
