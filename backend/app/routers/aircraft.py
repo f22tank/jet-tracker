@@ -30,3 +30,11 @@ def create(payload: schemas.AircraftCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=409, detail="An aircraft with that reg/serial already exists")
     return schemas.AircraftOut.model_validate(aircraft)
+
+
+@router.get("/{aircraft_id}", response_model=schemas.AircraftDetailOut)
+def read(aircraft_id: int, db: Session = Depends(get_db)):
+    aircraft = crud.get_aircraft(db, aircraft_id)
+    if aircraft is None:
+        raise HTTPException(status_code=404, detail="Aircraft not found")
+    return crud.to_aircraft_detail(db, aircraft)

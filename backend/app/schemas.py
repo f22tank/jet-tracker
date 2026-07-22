@@ -71,6 +71,26 @@ class AircraftSearchResult(BaseModel):
     variant: Optional[str] = None
 
 
+class AircraftSpotEntry(BaseModel):
+    id: int
+    date: datetime.date
+    location_label: str
+    operator_label: Optional[str] = None
+
+
+class AircraftStats(BaseModel):
+    spot_count: int
+    location_count: int
+    operator_count: int
+    first_date: Optional[datetime.date] = None
+    last_date: Optional[datetime.date] = None
+
+
+class AircraftDetailOut(AircraftOut):
+    spots: list[AircraftSpotEntry] = []
+    stats: AircraftStats
+
+
 class OperatorSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -335,3 +355,34 @@ class GalleryTableResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class MapSpot(BaseModel):
+    """One plottable spot — coords already coalesced (defined Location vs raw pin)."""
+
+    id: int
+    lat: float
+    lon: float
+    cover_thumbnail: Optional[str] = None
+    aircraft_identifier: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    aircraft_category: AircraftCategory
+    operator_label: Optional[str] = None
+    date: datetime.date
+
+
+class MapFacetOperator(BaseModel):
+    id: int
+    name: str
+    type: OperatorType
+
+
+class MapFacetLocation(BaseModel):
+    id: int
+    name: str
+
+
+class MapFacets(BaseModel):
+    aircraft_types: list[str]
+    operators: list[MapFacetOperator]
+    locations: list[MapFacetLocation]

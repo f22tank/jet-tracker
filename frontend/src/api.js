@@ -132,6 +132,22 @@ export function createOperator(payload) {
   });
 }
 
+export function fetchMapSpots(params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") search.set(key, value);
+  }
+  return request(`/api/map/spots?${search.toString()}`);
+}
+
+export function fetchMapFacets() {
+  return request("/api/map/facets");
+}
+
+export function fetchAircraft(aircraftId) {
+  return request(`/api/aircraft/${aircraftId}`);
+}
+
 export function fetchOperator(operatorId) {
   return request(`/api/operators/${operatorId}`);
 }

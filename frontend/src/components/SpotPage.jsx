@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, fetchSpot, mergeSpot, photoUrl, updateSpotDate, updateSpotFields } from "../api.js";
+import AircraftTypeLine from "./AircraftTypeLine.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
 import EditableField from "./EditableField.jsx";
 import LocationField from "./LocationField.jsx";
@@ -16,56 +17,6 @@ function formatDate(iso) {
 
 function formatShort(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short" });
-}
-
-function humanize(value) {
-  if (!value) return null;
-  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function TypeLine({ aircraft }) {
-  const parts = [];
-  if (aircraft.category === "military") {
-    if (aircraft.variant) parts.push(<b key="variant">{aircraft.variant}</b>);
-    if (aircraft.operator) parts.push(<span key="operator">{aircraft.operator}</span>);
-    if (aircraft.home_base) parts.push(<span key="home_base">{aircraft.home_base}</span>);
-  } else if (aircraft.category === "ga") {
-    const model = [aircraft.manufacturer, aircraft.type].filter(Boolean).join(" ");
-    if (model) parts.push(<b key="model">{model}</b>);
-    if (aircraft.configuration) parts.push(<span key="configuration">{humanize(aircraft.configuration)}</span>);
-    if (aircraft.role) parts.push(<span key="role">{humanize(aircraft.role)}</span>);
-  } else {
-    if (aircraft.type) parts.push(<b key="type">{aircraft.type}</b>);
-    if (aircraft.msn)
-      parts.push(
-        <span key="msn">
-          msn <b>{aircraft.msn}</b>
-        </span>
-      );
-    if (aircraft.line_number)
-      parts.push(
-        <span key="line_number">
-          ln <b>{aircraft.line_number}</b>
-        </span>
-      );
-    if (aircraft.first_flight)
-      parts.push(
-        <span key="first_flight">
-          first flight <b>{aircraft.first_flight}</b>
-        </span>
-      );
-  }
-
-  return (
-    <div className="type-line">
-      {parts.map((part, i) => (
-        <span key={i}>
-          {i > 0 && <span className="sep">·</span>}
-          {part}
-        </span>
-      ))}
-    </div>
-  );
 }
 
 export default function SpotPage({ spotId: initialSpotId }) {
@@ -175,13 +126,15 @@ export default function SpotPage({ spotId: initialSpotId }) {
       <div className="wrap">
         <header className="spot">
           <div className="reg-row">
-            <div className="reg mono">{spot.aircraft.identifier}</div>
+            <a href={`/aircraft?id=${spot.aircraft.id}`} className="reg mono reg-link">
+              {spot.aircraft.identifier}
+            </a>
             <div className="date-block">
               <span className="dl">Spotted</span>
               <span className="d">{formatDate(spot.date)}</span>
             </div>
           </div>
-          <TypeLine aircraft={spot.aircraft} />
+          <AircraftTypeLine aircraft={spot.aircraft} />
         </header>
 
         <div className="grid">

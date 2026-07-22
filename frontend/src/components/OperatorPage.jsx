@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchOperator, photoUrl } from "../api.js";
+import SpotMap from "./SpotMap.jsx";
 
 function formatDate(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
@@ -105,6 +106,20 @@ export default function OperatorPage({ operatorId }) {
           ))}
         </div>
       )}
+
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
+          <h2>Map</h2>
+          <span className="sub mono">the {operator.name} footprint</span>
+        </div>
+        <div style={{ padding: 14 }}>
+          <SpotMap
+            scope={{ operator_id: operator.id }}
+            hiddenFilters={["operator"]}
+            emptyMessage={`No plotted spots yet for ${operator.name}.`}
+          />
+        </div>
+      </div>
 
       <div className="ledger" style={{ marginTop: 24 }}>
         <div className="ledger-head">

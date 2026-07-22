@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import AircraftPage from "./components/AircraftPage.jsx";
 import HomePage from "./components/HomePage.jsx";
 import LocationPage from "./components/LocationPage.jsx";
 import LocationsListPage from "./components/LocationsListPage.jsx";
+import MapPage from "./components/MapPage.jsx";
 import OperatorPage from "./components/OperatorPage.jsx";
 import SpotPage from "./components/SpotPage.jsx";
 import TrayPage from "./components/TrayPage.jsx";
@@ -31,15 +33,19 @@ export default function App() {
   }
 
   const isTray = path.startsWith("/tray");
+  const isMap = path.startsWith("/map");
   const isOperator = path.startsWith("/operator");
+  const isAircraft = path.startsWith("/aircraft");
   const isLocation = path.startsWith("/location") && !path.startsWith("/locations");
   const isLocationsList = path.startsWith("/locations");
   const isSpotPage = path.startsWith("/spot");
-  const isHome = !isTray && !isOperator && !isLocation && !isLocationsList && !isSpotPage;
+  const isHome = !isTray && !isMap && !isOperator && !isAircraft && !isLocation && !isLocationsList && !isSpotPage;
 
   let page;
   if (isTray) page = <TrayPage />;
+  else if (isMap) page = <MapPage />;
   else if (isOperator) page = <OperatorPage operatorId={getIdFromUrl()} />;
+  else if (isAircraft) page = <AircraftPage aircraftId={getIdFromUrl()} />;
   else if (isLocation) page = <LocationPage locationId={getIdFromUrl()} />;
   else if (isLocationsList) page = <LocationsListPage />;
   else if (isSpotPage) page = <SpotPage spotId={getSpotIdFromUrl()} />;
@@ -57,6 +63,16 @@ export default function App() {
           }}
         >
           Home
+        </a>
+        <a
+          href="/map"
+          className={isMap ? "active" : ""}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/map");
+          }}
+        >
+          Map
         </a>
         <a
           href="/tray"

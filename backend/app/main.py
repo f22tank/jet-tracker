@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .database import Base, engine
-from .routers import aircraft, gallery, locations, operators, photos, spots
+from .routers import aircraft, gallery, locations, map as map_router, operators, photos, spots
 
 Base.metadata.create_all(bind=engine)
 
@@ -30,6 +30,7 @@ app.include_router(aircraft.router)
 app.include_router(locations.router)
 app.include_router(operators.router)
 app.include_router(gallery.router)
+app.include_router(map_router.router)
 
 
 @app.get("/api/health")

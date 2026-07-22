@@ -386,6 +386,41 @@ def create_aircraft(db: Session, payload: schemas.AircraftCreate) -> models.Airc
     return aircraft
 
 
+def get_aircraft(db: Session, aircraft_id: int) -> models.Aircraft | None:
+    return db.query(models.Aircraft).filter(models.Aircraft.id == aircraft_id).first()
+
+
+def to_aircraft_detail(db: Session, aircraft: models.Aircraft) -> schemas.AircraftDetailOut:
+    spots = (
+        db.query(models.Spot)
+        .filter(models.Spot.aircraft_id == aircraft.id)
+        .order_by(models.Spot.date.desc())
+        .all()
+    )
+    spot_entries = [
+        schemas.AircraftSpotEntry(
+            id=s.id,
+            date=s.date,
+            location_label=_location_label(s),
+            operator_label=_operator_label_for(s),
+        )
+        for s in spots
+    ]
+    dates = [s.date for s in spots]
+    stats = schemas.AircraftStats(
+        spot_count=len(spots),
+        location_count=len({s.location_id for s in spots if s.location_id}),
+        operator_count=len({s.operator_id for s in spots if s.operator_id}),
+        first_date=min(dates) if dates else None,
+        last_date=max(dates) if dates else None,
+    )
+    return schemas.AircraftDetailOut(
+        **schemas.AircraftOut.model_validate(aircraft).model_dump(),
+        spots=spot_entries,
+        stats=stats,
+    )
+
+
 # ---- tray / photo resolution ----
 
 
@@ -580,4 +615,106 @@ def to_gallery_row(spot: models.Spot) -> schemas.GalleryTableRow:
         operator_label=_operator_label_for(spot),
         location_label=_location_label(spot),
         cover_thumbnail=_spot_cover_thumbnail(spot),
+    )
+
+
+# ---- map (one reusable spot-set query — fed all spots, or scoped by aircraft/operator) ----
+
+
+def get_map_spots(
+    db: Session,
+    aircraft_id: int | None = None,
+    operator_id: int | None = None,
+    category: models.AircraftCategory | None = None,
+    aircraft_type: str | None = None,
+    date_from: datetime.date | None = None,
+    date_to: datetime.date | None = None,
+    location_id: int | None = None,
+) -> list[models.Spot]:
+    """Every filter dimension the map supports (category/operator/type/date range/location),
+    AND-combined, plus the fixed scope (aircraft_id or operator_id) the caller passes for the
+    aircraft-page / operator-page placements. Only spots with coordinates — a defined Location's
+    lat/lon, or the spot's own raw pin — are plottable; the rest are silently excluded."""
+    lat_expr = func.coalesce(models.Location.lat, models.Spot.spot_lat)
+    lon_expr = func.coalesce(models.Location.lon, models.Spot.spot_lon)
+
+    query = (
+        db.query(models.Spot)
+        .join(models.Aircraft, models.Spot.aircraft_id == models.Aircraft.id)
+        .outerjoin(models.Location, models.Spot.location_id == models.Location.id)
+        .outerjoin(models.Operator, models.Spot.operator_id == models.Operator.id)
+        .filter(lat_expr.isnot(None), lon_expr.isnot(None))
+    )
+    if aircraft_id:
+        query = query.filter(models.Spot.aircraft_id == aircraft_id)
+    if operator_id:
+        query = query.filter(models.Spot.operator_id == operator_id)
+    if category:
+        query = query.filter(models.Aircraft.category == category)
+    if aircraft_type:
+        query = query.filter(models.Aircraft.type.ilike(f"%{aircraft_type}%"))
+    if date_from:
+        query = query.filter(models.Spot.date >= date_from)
+    if date_to:
+        query = query.filter(models.Spot.date <= date_to)
+    if location_id:
+        query = query.filter(models.Spot.location_id == location_id)
+
+    return query.order_by(models.Spot.date.desc()).all()
+
+
+def _spot_coords(spot: models.Spot) -> tuple[float, float] | None:
+    if spot.location is not None and spot.location.lat is not None and spot.location.lon is not None:
+        return spot.location.lat, spot.location.lon
+    if spot.spot_lat is not None and spot.spot_lon is not None:
+        return spot.spot_lat, spot.spot_lon
+    return None
+
+
+def to_map_spot(spot: models.Spot) -> schemas.MapSpot | None:
+    coords = _spot_coords(spot)
+    if coords is None:
+        return None
+    lat, lon = coords
+    return schemas.MapSpot(
+        id=spot.id,
+        lat=lat,
+        lon=lon,
+        cover_thumbnail=_spot_cover_thumbnail(spot),
+        aircraft_identifier=spot.aircraft.identifier,
+        aircraft_type=spot.aircraft.type,
+        aircraft_category=spot.aircraft.category,
+        operator_label=_operator_label_for(spot),
+        date=spot.date,
+    )
+
+
+def get_map_facets(db: Session) -> schemas.MapFacets:
+    """Populates the big map's filter dropdowns — only values actually in use."""
+    types = [
+        t
+        for (t,) in db.query(models.Aircraft.type)
+        .filter(models.Aircraft.type.isnot(None))
+        .distinct()
+        .order_by(models.Aircraft.type)
+        .all()
+    ]
+    operators = (
+        db.query(models.Operator)
+        .join(models.Spot, models.Spot.operator_id == models.Operator.id)
+        .distinct()
+        .order_by(models.Operator.name)
+        .all()
+    )
+    locations = (
+        db.query(models.Location)
+        .join(models.Spot, models.Spot.location_id == models.Location.id)
+        .distinct()
+        .order_by(models.Location.name)
+        .all()
+    )
+    return schemas.MapFacets(
+        aircraft_types=types,
+        operators=[schemas.MapFacetOperator(id=o.id, name=o.name, type=o.type) for o in operators],
+        locations=[schemas.MapFacetLocation(id=loc.id, name=loc.name) for loc in locations],
     )

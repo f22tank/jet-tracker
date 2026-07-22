@@ -57,9 +57,9 @@ def seed():
         db.add_all([aircraft, military, ga])
         db.flush()
 
-        kric = Location(icao="KRIC", iata="RIC", name="Richmond Intl", city="Richmond", country="US")
-        kiad = Location(icao="KIAD", iata="IAD", name="Dulles Intl", city="Dulles", country="US")
-        kdca = Location(icao="KDCA", iata="DCA", name="Reagan National", city="Arlington", country="US")
+        kric = Location(icao="KRIC", iata="RIC", name="Richmond Intl", city="Richmond", country="US", lat=37.5052, lon=-77.3197)
+        kiad = Location(icao="KIAD", iata="IAD", name="Dulles Intl", city="Dulles", country="US", lat=38.9531, lon=-77.4565)
+        kdca = Location(icao="KDCA", iata="DCA", name="Reagan National", city="Arlington", country="US", lat=38.8512, lon=-77.0402)
         db.add_all([kric, kiad, kdca])
         db.flush()
 
@@ -183,6 +183,18 @@ def seed():
                 date=datetime.date(2026, 6, 10),
                 location_id=kiad.id,
                 owner="Commemorative Air Force",
+            )
+        )
+
+        # Raw-pin spot: a roadside catch with no defined Location — exercises the
+        # map's other coordinate source (Spot.spot_lat/spot_lon) alongside location_id.
+        db.add(
+            Spot(
+                aircraft_id=aircraft.id,
+                date=datetime.date(2026, 5, 2),
+                spot_lat=38.6926,
+                spot_lon=-77.1682,
+                airline="United Airlines",
             )
         )
 
