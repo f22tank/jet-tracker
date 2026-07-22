@@ -1,4 +1,5 @@
 import datetime
+from collections import Counter
 
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
@@ -434,11 +435,31 @@ def to_operator_out(db: Session, operator: models.Operator) -> schemas.OperatorO
         for s in spots
     ]
     dates = [s.date for s in spots]
+
+    type_counter = Counter(s.aircraft.type for s in spots if s.aircraft.type)
+    top_types = [schemas.NameCount(name=n, count=c) for n, c in type_counter.most_common(10)]
+
+    location_counter: dict[int, dict] = {}
+    for s in spots:
+        if s.location_id:
+            entry = location_counter.setdefault(s.location_id, {"name": s.location.name, "count": 0})
+            entry["count"] += 1
+    top_locations = [
+        schemas.TopEntity(id=lid, name=v["name"], spot_count=v["count"])
+        for lid, v in sorted(location_counter.items(), key=lambda kv: -kv[1]["count"])[:10]
+    ]
+
+    year_counter = Counter(s.date.year for s in spots)
+    spots_by_year = [schemas.YearCount(year=y, count=c) for y, c in sorted(year_counter.items())]
+
     stats = schemas.OperatorStats(
         spot_count=len(spots),
         aircraft_count=len({s.aircraft_id for s in spots}),
         first_date=min(dates) if dates else None,
         last_date=max(dates) if dates else None,
+        top_types=top_types,
+        top_locations=top_locations,
+        spots_by_year=spots_by_year,
     )
 
     detail = _operator_detail_fields(operator)
@@ -501,6 +522,15 @@ def create_aircraft(db: Session, payload: schemas.AircraftCreate) -> models.Airc
 
 def get_aircraft(db: Session, aircraft_id: int) -> models.Aircraft | None:
     return db.query(models.Aircraft).filter(models.Aircraft.id == aircraft_id).first()
+
+
+def update_aircraft_fields(db: Session, aircraft: models.Aircraft, update: schemas.AircraftUpdate) -> models.Aircraft:
+    data = update.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(aircraft, field, value)
+    db.commit()
+    db.refresh(aircraft)
+    return aircraft
 
 
 def to_aircraft_detail(db: Session, aircraft: models.Aircraft) -> schemas.AircraftDetailOut:
@@ -1027,6 +1057,17 @@ def get_stats(db: Session) -> schemas.StatsOut:
     )
     category_counts = [schemas.CategoryCount(category=cat, count=count) for cat, count in category_rows]
 
+    type_rows = (
+        db.query(models.Aircraft.type, func.count(models.Spot.id))
+        .join(models.Spot, models.Spot.aircraft_id == models.Aircraft.id)
+        .filter(models.Aircraft.type.isnot(None))
+        .group_by(models.Aircraft.type)
+        .order_by(func.count(models.Spot.id).desc())
+        .limit(10)
+        .all()
+    )
+    type_counts = [schemas.NameCount(name=t, count=c) for t, c in type_rows]
+
     top_operator_rows = (
         db.query(models.Operator.id, models.Operator.name, func.count(models.Spot.id))
         .join(models.Spot, models.Spot.operator_id == models.Operator.id)
@@ -1065,6 +1106,7 @@ def get_stats(db: Session) -> schemas.StatsOut:
     return schemas.StatsOut(
         headline=headline,
         category_counts=category_counts,
+        type_counts=type_counts,
         top_operators=top_operators,
         top_locations=top_locations,
         top_manufacturers=top_manufacturers,

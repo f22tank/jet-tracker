@@ -12,7 +12,7 @@ export default function MiniMap({ lat, lon }) {
       </svg>
       <div className="pin">
         <svg width="20" height="26" viewBox="0 0 20 26">
-          <path d="M10 0C4.5 0 0 4.5 0 10c0 7 10 16 10 16s10-9 10-16c0-5.5-4.5-10-10-10z" fill="#f4d03f" />
+          <path d="M10 0C4.5 0 0 4.5 0 10c0 7 10 16 10 16s10-9 10-16c0-5.5-4.5-10-10-10z" fill="#4ade80" />
           <circle cx="10" cy="10" r="4" fill="#1c2126" />
         </svg>
       </div>

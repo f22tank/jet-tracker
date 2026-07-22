@@ -45,19 +45,21 @@ def update(manufacturer_id: int, update: schemas.ManufacturerUpdate, db: Session
 
 @router.post("/{manufacturer_id}/logo", response_model=schemas.ManufacturerSummary)
 async def upload_logo(manufacturer_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """Same mechanism as operator logos — no thumbnail, replacing deletes the old file."""
+    """Same mechanism as operator logos — no thumbnail, replacing deletes the old
+    file. JPEG or PNG, PNG keeps transparency."""
     manufacturer = _get_manufacturer_or_404(db, manufacturer_id)
 
     contents = await file.read()
     try:
-        storage.assert_jpeg(file.filename, file.content_type)
+        storage.assert_asset_image(file.filename, file.content_type)
     except storage.UnsupportedImageType as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     storage.delete_if_local(manufacturer.logo)
 
-    rel = storage.asset_rel("manufacturers", manufacturer.id, storage.new_id())
-    storage.save_jpeg(contents, rel)
+    ext = storage.asset_ext(file.filename, file.content_type)
+    rel = storage.asset_rel("manufacturers", manufacturer.id, storage.new_id(), ext)
+    storage.save_file(contents, rel)
 
     manufacturer.logo = rel
     db.commit()

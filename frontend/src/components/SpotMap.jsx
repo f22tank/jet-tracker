@@ -1,8 +1,5 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
@@ -11,9 +8,14 @@ import { useEffect, useRef, useState } from "react";
 import { fetchMapFacets, fetchMapSpots, photoUrl } from "../api.js";
 import { formatDate } from "../format.js";
 
-// Bundler fix: Leaflet's default icon URLs are relative and break under Vite/webpack.
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
+// Radar-blip marker in the app's accent green — replaces Leaflet's default blue
+// pin (whose PNG-based icon also can't be recolored via CSS custom properties).
+const spotIcon = L.divIcon({
+  className: "spot-marker",
+  html: '<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="#4ade80" fill-opacity="0.25"/><circle cx="9" cy="9" r="4" fill="#4ade80" stroke="#12161a" stroke-width="1.5"/></svg>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
 
 const CATEGORY_LABELS = { commercial: "Commercial", military: "Military", ga: "GA" };
 
@@ -139,7 +141,14 @@ export default function SpotMap({ scope = {}, hiddenFilters = [], defaultFilters
 
     if (viewMode === "heat") {
       const points = spots.map((s) => [s.lat, s.lon, 1]);
-      heatLayerRef.current = L.heatLayer(points, { radius: 35, blur: 25, max: 1, minOpacity: 0.4 }).addTo(map);
+      heatLayerRef.current = L.heatLayer(points, {
+        radius: 35,
+        blur: 25,
+        max: 1,
+        minOpacity: 0.4,
+        // Monochrome green ramp instead of leaflet.heat's default rainbow gradient.
+        gradient: { 0.3: "#123524", 0.6: "#22c55e", 1: "#4ade80" },
+      }).addTo(map);
     } else {
       const groups = new Map();
       for (const s of spots) {
@@ -150,7 +159,7 @@ export default function SpotMap({ scope = {}, hiddenFilters = [], defaultFilters
       const cluster = L.markerClusterGroup();
       for (const [key, group] of groups) {
         const [lat, lon] = key.split(",").map(Number);
-        const marker = L.marker([lat, lon]);
+        const marker = L.marker([lat, lon], { icon: spotIcon });
         marker.bindPopup(buildPopupContent(group));
         cluster.addLayer(marker);
       }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { fetchAircraft, photoUrl } from "../api.js";
+import { fetchAircraft, photoUrl, updateAircraft } from "../api.js";
 import { formatDate } from "../format.js";
 import AircraftTypeLine from "./AircraftTypeLine.jsx";
+import EditableField from "./EditableField.jsx";
 import SpotMap from "./SpotMap.jsx";
 
 export default function AircraftPage({ aircraftId }) {
@@ -24,6 +25,11 @@ export default function AircraftPage({ aircraftId }) {
 
   const { stats } = aircraft;
 
+  async function saveField(field, value) {
+    const updated = await updateAircraft(aircraftId, { [field]: value });
+    setAircraft(updated);
+  }
+
   return (
     <div className="wrap">
       <header className="spot">
@@ -42,6 +48,38 @@ export default function AircraftPage({ aircraftId }) {
           </div>
         )}
       </header>
+
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
+          <h2>Details</h2>
+        </div>
+        <div style={{ padding: "4px 18px" }}>
+          <EditableField label="Type" value={aircraft.type} placeholder="add type" mono onSave={(v) => saveField("type", v)} />
+          {aircraft.category === "commercial" && (
+            <>
+              <EditableField label="MSN" value={aircraft.msn} placeholder="add MSN" mono onSave={(v) => saveField("msn", v)} />
+              <EditableField label="Line #" value={aircraft.line_number} placeholder="add line number" mono onSave={(v) => saveField("line_number", v)} />
+              <EditableField
+                label="1st flight"
+                value={aircraft.first_flight != null ? String(aircraft.first_flight) : ""}
+                placeholder="add year"
+                mono
+                onSave={(v) => saveField("first_flight", v ? Number(v) : null)}
+              />
+            </>
+          )}
+          {aircraft.category === "military" && (
+            <>
+              <EditableField label="Variant" value={aircraft.variant} placeholder="add variant" mono onSave={(v) => saveField("variant", v)} />
+              <EditableField label="Operator" value={aircraft.operator} placeholder="add operator" onSave={(v) => saveField("operator", v)} />
+              <EditableField label="Home base" value={aircraft.home_base} placeholder="add home base" onSave={(v) => saveField("home_base", v)} />
+            </>
+          )}
+          {aircraft.category === "ga" && (
+            <EditableField label="Manufacturer" value={aircraft.manufacturer} placeholder="add manufacturer" onSave={(v) => saveField("manufacturer", v)} />
+          )}
+        </div>
+      </div>
 
       <div className="ledger" style={{ marginTop: 24 }}>
         <div className="ledger-head">

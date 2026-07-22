@@ -54,3 +54,13 @@ def read(aircraft_id: int, db: Session = Depends(get_db)):
     if aircraft is None:
         raise HTTPException(status_code=404, detail="Aircraft not found")
     return crud.to_aircraft_detail(db, aircraft)
+
+
+@router.patch("/{aircraft_id}", response_model=schemas.AircraftDetailOut)
+def update(aircraft_id: int, update: schemas.AircraftUpdate, db: Session = Depends(get_db)):
+    """Descriptive fields only — see schemas.AircraftUpdate for why reg/serial are excluded."""
+    aircraft = crud.get_aircraft(db, aircraft_id)
+    if aircraft is None:
+        raise HTTPException(status_code=404, detail="Aircraft not found")
+    aircraft = crud.update_aircraft_fields(db, aircraft, update)
+    return crud.to_aircraft_detail(db, aircraft)

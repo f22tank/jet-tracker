@@ -40,7 +40,7 @@ async def ingest_photos(files: list[UploadFile] = File(...), db: Session = Depen
         shard_date = exif_data.get("taken_at").date() if exif_data.get("taken_at") else datetime.date.today()
 
         original_rel = storage.original_rel(shard_date, file_id)
-        storage.save_jpeg(contents, original_rel)
+        storage.save_file(contents, original_rel)
 
         thumb_rel = None
         if img is not None:

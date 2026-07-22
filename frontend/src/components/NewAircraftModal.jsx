@@ -69,7 +69,7 @@ export default function NewAircraftModal({ initialIdentifier, onCreate, onCancel
   return (
     <div className="dialog-backdrop" onClick={onCancel}>
       <div className="dialog dialog--wide" onClick={(e) => e.stopPropagation()}>
-        <h4 style={{ color: "var(--hivis)" }}>+ New aircraft</h4>
+        <h4 style={{ color: "var(--accent)" }}>+ New aircraft</h4>
         <p>This registration/serial hasn&rsquo;t been tagged before. Pick a category — it&rsquo;s set once and every future sighting of this airframe inherits it.</p>
 
         <form onSubmit={submit}>

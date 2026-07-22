@@ -38,7 +38,7 @@ export default function NewLocationModal({ initialName, onCreate, onCancel }) {
   return (
     <div className="dialog-backdrop" onClick={onCancel}>
       <div className="dialog dialog--wide" onClick={(e) => e.stopPropagation()}>
-        <h4 style={{ color: "var(--hivis)" }}>+ New location</h4>
+        <h4 style={{ color: "var(--accent)" }}>+ New location</h4>
         <p>
           A defined place gets its own page and aggregates every spot there. You&rsquo;re responsible for
           entering coordinates — leave them blank if you don&rsquo;t know them.

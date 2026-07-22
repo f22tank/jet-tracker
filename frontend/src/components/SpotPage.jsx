@@ -4,6 +4,7 @@ import { formatDate } from "../format.js";
 import AircraftTypeLine from "./AircraftTypeLine.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
 import EditableField from "./EditableField.jsx";
+import Lightbox from "./Lightbox.jsx";
 import LocationField from "./LocationField.jsx";
 import MiniMap from "./MiniMap.jsx";
 import OperatorField from "./OperatorField.jsx";
@@ -14,6 +15,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [dateConflict, setDateConflict] = useState(null); // { pendingDate, currentSpot, conflictingSpot }
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   const load = useCallback((id) => {
     setLoading(true);
@@ -129,7 +131,10 @@ export default function SpotPage({ spotId: initialSpotId }) {
         <div className="grid">
           <div className="cell">
             {hasPhotos ? (
-              <div className="cover">
+              <div
+                className="cover"
+                onClick={() => setLightboxIndex(spot.photos.findIndex((p) => p.id === cover.id))}
+              >
                 <img src={photoUrl(cover.path)} alt={`${spot.aircraft.identifier} on approach`} />
                 <div className="tag mono">★ COVER</div>
                 <div className="exif mono">
@@ -223,16 +228,25 @@ export default function SpotPage({ spotId: initialSpotId }) {
           </div>
           {hasPhotos ? (
             <div className="thumbs">
-              {spot.photos.map((p) => (
+              {spot.photos.map((p, i) => (
                 <div
                   key={p.id}
                   className={`thumb${p.id === spot.cover_photo_id ? " cover-sel" : ""}`}
-                  onClick={() => setCover(p.id)}
+                  onClick={() => setLightboxIndex(i)}
                 >
                   <div className="im">
                     <img src={photoUrl(p.thumbnail_path || p.path)} alt="" />
                   </div>
-                  <div className="star">{p.id === spot.cover_photo_id ? "★" : "☆"}</div>
+                  <div
+                    className="star"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCover(p.id);
+                    }}
+                    title="Set as cover"
+                  >
+                    {p.id === spot.cover_photo_id ? "★" : "☆"}
+                  </div>
                   <div className="meta">
                     {p.camera} · {p.focal_length}
                     <br />
@@ -291,6 +305,15 @@ export default function SpotPage({ spotId: initialSpotId }) {
           conflictingSpot={dateConflict.conflictingSpot}
           onCancel={() => setDateConflict(null)}
           onMerge={confirmMerge}
+        />
+      )}
+
+      {lightboxIndex != null && (
+        <Lightbox
+          photos={spot.photos}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
         />
       )}
     </>

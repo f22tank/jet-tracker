@@ -99,7 +99,7 @@ export default function NewOperatorModal({ type, initialName, onCreate, onCancel
   return (
     <div className="dialog-backdrop" onClick={onCancel}>
       <div className="dialog dialog--wide" onClick={(e) => e.stopPropagation()}>
-        <h4 style={{ color: "var(--hivis)" }}>+ New {isAirline ? "airline" : "unit"}</h4>
+        <h4 style={{ color: "var(--accent)" }}>+ New {isAirline ? "airline" : "unit"}</h4>
         <p>
           This {isAirline ? "airline" : "unit"} hasn&rsquo;t been tagged before — it becomes a shared record every
           future sighting can link to.

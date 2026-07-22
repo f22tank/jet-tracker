@@ -6,6 +6,26 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from .models import AircraftCategory, GAConfiguration, GARole, OperatorType
 
 
+class NameCount(BaseModel):
+    """A bare string dimension with no entity/id behind it (e.g. aircraft type)."""
+
+    name: str
+    count: int
+
+
+class TopEntity(BaseModel):
+    """An id-backed dimension (operator/location/manufacturer), so the frontend can link it."""
+
+    id: int
+    name: str
+    spot_count: int
+
+
+class YearCount(BaseModel):
+    year: int
+    count: int
+
+
 class ManufacturerSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,6 +90,20 @@ class AircraftCreate(BaseModel):
         elif not self.registration:
             raise ValueError("registration is required for commercial/ga aircraft")
         return self
+
+
+class AircraftUpdate(BaseModel):
+    """Descriptive fields only — registration/serial stay fixed, since they're the
+    identity key behind UNIQUE(aircraft, date) and the reg/serial unique index."""
+
+    type: Optional[str] = None
+    msn: Optional[str] = None
+    line_number: Optional[str] = None
+    first_flight: Optional[int] = None
+    variant: Optional[str] = None
+    operator: Optional[str] = None
+    home_base: Optional[str] = None
+    manufacturer: Optional[str] = None
 
 
 class AircraftSearchResult(BaseModel):
@@ -236,6 +270,9 @@ class OperatorStats(BaseModel):
     aircraft_count: int
     first_date: Optional[datetime.date] = None
     last_date: Optional[datetime.date] = None
+    top_types: list[NameCount] = []
+    top_locations: list[TopEntity] = []
+    spots_by_year: list[YearCount] = []
 
 
 class OperatorOut(BaseModel):
@@ -530,20 +567,10 @@ class CategoryCount(BaseModel):
     count: int
 
 
-class TopEntity(BaseModel):
-    id: int
-    name: str
-    spot_count: int
-
-
-class YearCount(BaseModel):
-    year: int
-    count: int
-
-
 class StatsOut(BaseModel):
     headline: HeadlineStats
     category_counts: list[CategoryCount]
+    type_counts: list[NameCount]
     top_operators: list[TopEntity]
     top_locations: list[TopEntity]
     top_manufacturers: list[TopEntity]

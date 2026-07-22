@@ -182,6 +182,13 @@ export function fetchAircraft(aircraftId) {
   return request(`/api/aircraft/${aircraftId}`);
 }
 
+export function updateAircraft(aircraftId, fields) {
+  return request(`/api/aircraft/${aircraftId}`, {
+    method: "PATCH",
+    body: JSON.stringify(fields),
+  });
+}
+
 export function fetchOperator(operatorId) {
   return request(`/api/operators/${operatorId}`);
 }

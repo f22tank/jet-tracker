@@ -67,19 +67,21 @@ async def upload_logo(operator_id: int, file: UploadFile = File(...), db: Sessio
     """Airline logo / unit patch upload — always a fresh file, never a reference
     to an existing spot photo. No thumbnail: logos are already small and shown
     at modest size (see PHOTO_STORAGE_BRIEF). Replacing an existing logo deletes
-    the old file rather than orphaning it."""
+    the old file rather than orphaning it. JPEG or PNG — PNG keeps transparency,
+    which a JPEG logo can't (it'd show an opaque box on the dark background)."""
     operator = _get_operator_or_404(db, operator_id)
 
     contents = await file.read()
     try:
-        storage.assert_jpeg(file.filename, file.content_type)
+        storage.assert_asset_image(file.filename, file.content_type)
     except storage.UnsupportedImageType as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     storage.delete_if_local(operator.image)
 
-    rel = storage.asset_rel("operators", operator.id, storage.new_id())
-    storage.save_jpeg(contents, rel)
+    ext = storage.asset_ext(file.filename, file.content_type)
+    rel = storage.asset_rel("operators", operator.id, storage.new_id(), ext)
+    storage.save_file(contents, rel)
 
     operator.image = rel
     db.commit()

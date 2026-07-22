@@ -68,26 +68,28 @@ async def upload_cover_photo(location_id: int, file: UploadFile = File(...), db:
     """Location cover photo upload — always a fresh file the user uploads, never
     a reference to an existing spot photo (see PHOTO_STORAGE_BRIEF). A thumb is
     generated since the full-size cover is also shown small, as a card. Replacing
-    an existing cover deletes the old original+thumb rather than orphaning them."""
+    an existing cover deletes the old original+thumb rather than orphaning them.
+    JPEG or PNG — PNG keeps transparency, and the thumb matches the original's format."""
     location = _get_location_or_404(db, location_id)
 
     contents = await file.read()
     try:
-        storage.assert_jpeg(file.filename, file.content_type)
+        storage.assert_asset_image(file.filename, file.content_type)
     except storage.UnsupportedImageType as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     storage.delete_if_local(location.cover_image)
     storage.delete_if_local(location.cover_image_thumbnail)
 
+    ext = storage.asset_ext(file.filename, file.content_type)
     file_id = storage.new_id()
-    original_rel = storage.asset_rel("locations", location.id, file_id)
-    storage.save_jpeg(contents, original_rel)
+    original_rel = storage.asset_rel("locations", location.id, file_id, ext)
+    storage.save_file(contents, original_rel)
 
     thumb_rel = None
     try:
         img = storage.open_image(contents)
-        thumb_rel = storage.asset_thumb_rel("locations", location.id, file_id)
+        thumb_rel = storage.asset_thumb_rel("locations", location.id, file_id, ext)
         storage.save_thumbnail(img, thumb_rel, size=storage.ASSET_THUMB_SIZE)
     except Exception:
         thumb_rel = None

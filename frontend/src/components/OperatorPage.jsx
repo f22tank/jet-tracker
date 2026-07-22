@@ -1,9 +1,52 @@
 import { useEffect, useState } from "react";
+import { Bar, Doughnut } from "react-chartjs-2";
 import { fetchOperator, photoUrl, removeOperatorLogo, updateOperator, uploadOperatorLogo } from "../api.js";
+import { CHART_COLORS, barScaleOptions, chartBaseOptions } from "../chartSetup.js";
 import { formatDate } from "../format.js";
 import AssetImageUpload from "./AssetImageUpload.jsx";
 import EditableField from "./EditableField.jsx";
 import SpotMap from "./SpotMap.jsx";
+
+const doughnutOptions = {
+  ...chartBaseOptions,
+  plugins: { ...chartBaseOptions.plugins, legend: { position: "right" } },
+};
+const horizontalBarOptions = {
+  ...chartBaseOptions,
+  ...barScaleOptions,
+  indexAxis: "y",
+  plugins: { ...chartBaseOptions.plugins, legend: { display: false } },
+};
+const verticalBarOptions = {
+  ...chartBaseOptions,
+  ...barScaleOptions,
+  plugins: { ...chartBaseOptions.plugins, legend: { display: false } },
+};
+
+function typeDoughnutData(topTypes) {
+  return {
+    labels: topTypes.map((t) => t.name),
+    datasets: [{ data: topTypes.map((t) => t.count), backgroundColor: CHART_COLORS, borderColor: "#1c2126", borderWidth: 2 }],
+  };
+}
+
+function locationBarData(topLocations) {
+  return {
+    labels: topLocations.map((l) => l.name),
+    datasets: [
+      { label: "Spots", data: topLocations.map((l) => l.spot_count), backgroundColor: "#4ade80", hoverBackgroundColor: "#22c55e", borderRadius: 3 },
+    ],
+  };
+}
+
+function yearBarData(spotsByYear) {
+  return {
+    labels: spotsByYear.map((y) => String(y.year)),
+    datasets: [
+      { label: "Spots", data: spotsByYear.map((y) => y.count), backgroundColor: "#4ade80", hoverBackgroundColor: "#22c55e", borderRadius: 3 },
+    ],
+  };
+}
 
 function DetailLine({ operator }) {
   const parts =
@@ -112,6 +155,42 @@ export default function OperatorPage({ operatorId }) {
           </div>
         </div>
       </div>
+
+      {stats.spots_by_year.length > 0 && (
+        <div className="ledger" style={{ marginTop: 24 }}>
+          <div className="ledger-head">
+            <h2>Spots Over Time</h2>
+          </div>
+          <div className="chart-card-body">
+            <Bar data={yearBarData(stats.spots_by_year)} options={verticalBarOptions} />
+          </div>
+        </div>
+      )}
+
+      {(stats.top_types.length > 0 || stats.top_locations.length > 0) && (
+        <div className="chart-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          {stats.top_types.length > 0 && (
+            <div className="ledger">
+              <div className="ledger-head">
+                <h2>Top Aircraft Types</h2>
+              </div>
+              <div className="chart-card-body">
+                <Doughnut data={typeDoughnutData(stats.top_types)} options={doughnutOptions} />
+              </div>
+            </div>
+          )}
+          {stats.top_locations.length > 0 && (
+            <div className="ledger">
+              <div className="ledger-head">
+                <h2>Top Locations</h2>
+              </div>
+              <div className="chart-card-body">
+                <Bar data={locationBarData(stats.top_locations)} options={horizontalBarOptions} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="ledger" style={{ marginTop: 24 }}>
         <div className="ledger-head">
