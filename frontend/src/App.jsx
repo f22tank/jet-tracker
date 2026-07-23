@@ -126,7 +126,7 @@ export default function App() {
           Manufacturers
         </NavLink>
         <NavLink to="/tray" active={isTray}>
-          Tray
+          Upload
         </NavLink>
       </div>
       {page}

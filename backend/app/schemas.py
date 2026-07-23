@@ -275,6 +275,7 @@ class OperatorSpotEntry(BaseModel):
     date: datetime.date
     aircraft_identifier: Optional[str] = None
     aircraft_type: Optional[str] = None
+    manufacturer_name: Optional[str] = None
     location_label: str
     cover_thumbnail: Optional[str] = None
 
@@ -374,6 +375,7 @@ class LocationSpotEntry(BaseModel):
     date: datetime.date
     aircraft_identifier: Optional[str] = None
     aircraft_type: Optional[str] = None
+    manufacturer_name: Optional[str] = None
     operator_label: Optional[str] = None
     cover_thumbnail: Optional[str] = None
 
@@ -497,6 +499,19 @@ class SpotAircraftReassign(BaseModel):
         return self
 
 
+class IncompleteSpotEntry(BaseModel):
+    """One row in the Upload tab's 'Needs attention' view — a spot that already
+    exists but is missing a field that should be known for every spot (location,
+    manufacturer, type, aircraft identity). Fields that are legitimately often
+    unknown (msn, line number, first flight, variant, livery/markings, notes)
+    are never flagged here."""
+
+    id: int
+    date: datetime.date
+    aircraft_identifier: Optional[str] = None
+    missing: list[str]
+
+
 class TrayPhoto(PhotoOut):
     needs_date: bool = False
 
@@ -532,6 +547,8 @@ class GallerySpotCard(BaseModel):
     id: int
     date: datetime.date
     aircraft_identifier: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    manufacturer_name: Optional[str] = None
     cover_thumbnail: Optional[str] = None
     operator_name: Optional[str] = None
     operator_image: Optional[str] = None
@@ -542,6 +559,7 @@ class GalleryTableRow(BaseModel):
     date: datetime.date
     aircraft_identifier: Optional[str] = None
     aircraft_type: Optional[str] = None
+    manufacturer_name: Optional[str] = None
     aircraft_category: AircraftCategory
     operator_label: Optional[str] = None
     location_label: str
@@ -564,6 +582,7 @@ class MapSpot(BaseModel):
     cover_thumbnail: Optional[str] = None
     aircraft_identifier: Optional[str] = None
     aircraft_type: Optional[str] = None
+    manufacturer_name: Optional[str] = None
     aircraft_category: AircraftCategory
     operator_label: Optional[str] = None
     date: datetime.date
@@ -608,3 +627,4 @@ class StatsOut(BaseModel):
     top_locations: list[TopEntity]
     top_manufacturers: list[TopEntity]
     spots_by_year: list[YearCount]
+    branch_counts: list[NameCount] = []

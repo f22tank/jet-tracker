@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import {
   fetchLocation,
   photoUrl,
@@ -167,7 +168,7 @@ export default function LocationPage({ locationId }) {
             </span>
             <span className="ld">{formatDate(entry.date)}</span>
             <span className="ll">
-              {entry.aircraft_identifier} · {entry.aircraft_type}
+              {entry.aircraft_identifier} · {formatTypeLine(entry.manufacturer_name, entry.aircraft_type)}
             </span>
             <span className="lc">{entry.operator_label || ""}</span>
           </a>

@@ -29,6 +29,14 @@ def list_all(db: Session = Depends(get_db)):
     return crud.list_manufacturers(db)
 
 
+@router.get("/search", response_model=list[schemas.ManufacturerSummary])
+def search(q: str = "", db: Session = Depends(get_db)):
+    """Autocomplete for the manufacturer picker (aircraft page / spot edit surface) —
+    same pattern as operator/location pickers: search existing, create-if-missing
+    happens by submitting typed text through AircraftUpdate.manufacturer_name."""
+    return [_to_summary(m) for m in crud.search_manufacturers(db, q)]
+
+
 @router.get("/{manufacturer_id}", response_model=schemas.ManufacturerOut)
 def read(manufacturer_id: int, db: Session = Depends(get_db)):
     manufacturer = _get_manufacturer_or_404(db, manufacturer_id)

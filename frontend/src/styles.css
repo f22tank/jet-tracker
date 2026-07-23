@@ -434,6 +434,17 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 }
 .tray-section h2 .count{color:var(--steel);font-weight:400;letter-spacing:0;text-transform:none}
 
+/* ---- Upload tab: "Needs attention" completeness view ---- */
+.incomplete-list{border:1px solid var(--hairline);border-radius:4px;overflow:hidden}
+.incomplete-row{color:inherit}
+.missing-chip{
+  display:inline-block;font-size:10px;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 7px;border-radius:3px;margin-left:6px;font-family:'Spline Sans Mono';
+  background:rgba(139,149,158,.15);color:var(--steel);
+}
+.missing-chip:first-child{margin-left:0}
+.missing-chip--high{background:rgba(224,122,75,.15);color:var(--warn)}
+
 .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
 .tray-card{
   background:var(--panel);border:1px solid var(--hairline);border-radius:5px;padding:8px;
@@ -518,12 +529,13 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .cc-im img{width:100%;height:100%;object-fit:cover;display:block}
 .cc-im-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--hairline);font-size:24px}
 .cc-reg{padding:8px 9px 2px;font-size:14px;font-weight:700;color:var(--paper)}
+.cc-type{padding:0 9px;font-size:11px;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cc-meta{padding:0 9px 9px;display:flex;flex-direction:column;gap:3px}
 .cc-date{font-size:10px;color:var(--steel)}
 .cc-operator{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--steel)}
 .cc-operator img{width:14px;height:14px;border-radius:2px;object-fit:cover}
 
-.all-spots-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.all-spots-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 .all-spots-head h2{margin-bottom:0}
 .search-box{
   background:var(--panel-2);border:1px solid var(--hairline);color:var(--aluminum);
@@ -588,6 +600,7 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .map-popup{font-family:'Spline Sans',system-ui,sans-serif;min-width:150px}
 .map-popup img{width:100%;height:90px;object-fit:cover;border-radius:3px;margin-bottom:6px;display:block}
 .map-popup .mp-reg{font-family:'Spline Sans Mono';font-weight:700;font-size:14px;color:#1c2126}
+.map-popup .mp-type{font-size:11px;color:#333;margin-top:1px}
 .map-popup .mp-meta{font-size:11px;color:#555;margin:2px 0 6px}
 .map-popup a{color:#2a7fa8;font-size:12px;text-decoration:none;font-weight:600}
 .map-popup a:hover{text-decoration:underline}

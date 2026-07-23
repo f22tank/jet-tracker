@@ -76,8 +76,16 @@ export default function StatsPage() {
   if (loadError) return <div className="state-msg error mono">{loadError}</div>;
   if (!stats) return null;
 
-  const { headline, category_counts, type_counts, top_operators, top_locations, top_manufacturers, spots_by_year } =
-    stats;
+  const {
+    headline,
+    category_counts,
+    type_counts,
+    top_operators,
+    top_locations,
+    top_manufacturers,
+    spots_by_year,
+    branch_counts,
+  } = stats;
 
   const categoryData = doughnutData(
     category_counts.map((c) => ({ name: CATEGORY_LABELS[c.category] || c.category, count: c.count })),
@@ -179,6 +187,20 @@ export default function StatsPage() {
           <Bar data={horizontalBarData(top_manufacturers)} options={horizontalOptions} />
         )}
       </ChartCard>
+
+      {branch_counts.length > 0 && (
+        <div className="ledger" style={{ marginTop: 24 }}>
+          <div className="ledger-head">
+            <h2>Military — By Branch</h2>
+            <span className="sub mono">
+              top branch: <b>{branch_counts[0].name}</b> ({branch_counts[0].count} spot{branch_counts[0].count === 1 ? "" : "s"})
+            </span>
+          </div>
+          <div className="chart-card-body">
+            <Bar data={horizontalBarData(branch_counts, "name", "count")} options={horizontalOptions} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { fetchAircraft, photoUrl, updateAircraft } from "../api.js";
 import { formatDate } from "../format.js";
-import AircraftTypeLine from "./AircraftTypeLine.jsx";
+import AircraftTypeLine, { humanize } from "./AircraftTypeLine.jsx";
 import EditableField from "./EditableField.jsx";
+import ManufacturerField from "./ManufacturerField.jsx";
 import SpotMap from "./SpotMap.jsx";
+
+const CONFIGURATIONS = ["single_prop", "multi_prop", "turboprop", "jet", "rotary", "glider"];
+const ROLES = ["bizjet", "warbird", "bush_float", "homebuilt", "trainer", "agricultural"];
 
 export default function AircraftPage({ aircraftId }) {
   const [aircraft, setAircraft] = useState(null);
@@ -40,13 +44,6 @@ export default function AircraftPage({ aircraftId }) {
           </div>
         </div>
         <AircraftTypeLine aircraft={aircraft} />
-        {aircraft.manufacturer_entity && (
-          <div className="type-line" style={{ marginTop: 4 }}>
-            <a href={`/manufacturer?id=${aircraft.manufacturer_entity.id}`} style={{ color: "var(--sky)" }}>
-              {aircraft.manufacturer_entity.name}
-            </a>
-          </div>
-        )}
       </header>
 
       <div className="ledger" style={{ marginTop: 24 }}>
@@ -54,7 +51,41 @@ export default function AircraftPage({ aircraftId }) {
           <h2>Details</h2>
         </div>
         <div style={{ padding: "4px 18px" }}>
+          <div className="drow">
+            <span className="k">Category</span>
+            <span className="v" style={{ cursor: "default" }}>
+              <select value={aircraft.category} onChange={(e) => saveField("category", e.target.value)}>
+                <option value="commercial">Commercial</option>
+                <option value="military">Military</option>
+                <option value="ga">GA</option>
+              </select>
+            </span>
+          </div>
+
+          {aircraft.category === "military" ? (
+            <EditableField
+              label="Serial"
+              value={aircraft.serial}
+              placeholder="add serial"
+              mono
+              onSave={(v) => saveField("serial", v)}
+            />
+          ) : (
+            <EditableField
+              label="Registration"
+              value={aircraft.registration}
+              placeholder="add registration"
+              mono
+              onSave={(v) => saveField("registration", v)}
+            />
+          )}
+
+          <ManufacturerField
+            manufacturerEntity={aircraft.manufacturer_entity}
+            onSave={(name) => saveField("manufacturer_name", name)}
+          />
           <EditableField label="Type" value={aircraft.type} placeholder="add type" mono onSave={(v) => saveField("type", v)} />
+
           {aircraft.category === "commercial" && (
             <>
               <EditableField label="MSN" value={aircraft.msn} placeholder="add MSN" mono onSave={(v) => saveField("msn", v)} />
@@ -76,7 +107,37 @@ export default function AircraftPage({ aircraftId }) {
             </>
           )}
           {aircraft.category === "ga" && (
-            <EditableField label="Manufacturer" value={aircraft.manufacturer} placeholder="add manufacturer" onSave={(v) => saveField("manufacturer", v)} />
+            <>
+              <div className="drow">
+                <span className="k">Configuration</span>
+                <span className="v" style={{ cursor: "default" }}>
+                  <select
+                    value={aircraft.configuration || ""}
+                    onChange={(e) => saveField("configuration", e.target.value || null)}
+                  >
+                    <option value="">— optional —</option>
+                    {CONFIGURATIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {humanize(c)}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+              <div className="drow">
+                <span className="k">Role</span>
+                <span className="v" style={{ cursor: "default" }}>
+                  <select value={aircraft.role || ""} onChange={(e) => saveField("role", e.target.value || null)}>
+                    <option value="">— optional —</option>
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {humanize(r)}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+            </>
           )}
         </div>
       </div>

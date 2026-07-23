@@ -14,6 +14,14 @@ def _get_spot_or_404(db: Session, spot_id: int):
     return spot
 
 
+@router.get("/incomplete", response_model=list[schemas.IncompleteSpotEntry])
+def incomplete(db: Session = Depends(get_db)):
+    """The Upload tab's 'Needs attention' view — spots missing location,
+    manufacturer, type, or aircraft identity. Must stay above /{spot_id} so
+    'incomplete' isn't swallowed as a spot_id path param."""
+    return crud.get_incomplete_spots(db)
+
+
 @router.get("/{spot_id}", response_model=schemas.SpotOut)
 def read_spot(spot_id: int, db: Session = Depends(get_db)):
     spot = _get_spot_or_404(db, spot_id)

@@ -21,7 +21,7 @@ import os
 import uuid
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 PHOTOS_DIR = os.getenv("PHOTOS_DIR", "photos")
 
@@ -140,7 +140,15 @@ def save_file(contents: bytes, rel: str) -> None:
 
 def save_thumbnail(image: Image.Image, rel: str, size: tuple[int, int] = SPOT_THUMB_SIZE, quality: int = 82) -> None:
     """Format follows `rel`'s extension — PNG originals get a PNG thumb (alpha
-    preserved), everything else gets a JPEG thumb."""
+    preserved), everything else gets a JPEG thumb.
+
+    exif_transpose() runs first: phone cameras store pixels in sensor orientation
+    plus an EXIF Orientation tag; browsers honor that tag when displaying the
+    original, but PIL's resize reads raw pixels and ignores it, so a thumbnail
+    made from a portrait photo without this bakes in a 90°/180°/270° rotation
+    the original never showed. This also strips the tag from the derivative,
+    which is correct since the rotation is now physically applied to the pixels."""
+    image = ImageOps.exif_transpose(image)
     path = abs_path(rel)
     ensure_parent(path)
     if rel.lower().endswith(".png"):

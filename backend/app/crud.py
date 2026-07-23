@@ -240,6 +240,7 @@ def to_location_out(db: Session, location: models.Location) -> schemas.LocationO
             date=s.date,
             aircraft_identifier=s.aircraft.identifier,
             aircraft_type=s.aircraft.type,
+            manufacturer_name=_aircraft_manufacturer_name(s.aircraft),
             operator_label=s.operator.name if s.operator else (s.airline or s.unit),
             cover_thumbnail=_spot_cover_thumbnail(s),
         )
@@ -429,6 +430,7 @@ def to_operator_out(db: Session, operator: models.Operator) -> schemas.OperatorO
             date=s.date,
             aircraft_identifier=s.aircraft.identifier,
             aircraft_type=s.aircraft.type,
+            manufacturer_name=_aircraft_manufacturer_name(s.aircraft),
             location_label=_location_label(s),
             cover_thumbnail=_spot_cover_thumbnail(s),
         )
@@ -618,7 +620,13 @@ def to_aircraft_detail(db: Session, aircraft: models.Aircraft) -> schemas.Aircra
 
 
 def search_aircraft_table(
-    db: Session, q: str = "", sort: str = "identifier", order: str = "asc", page: int = 1, page_size: int = 25
+    db: Session,
+    q: str = "",
+    category: models.AircraftCategory | None = None,
+    sort: str = "identifier",
+    order: str = "asc",
+    page: int = 1,
+    page_size: int = 25,
 ) -> tuple[list[schemas.AircraftTableRow], int]:
     """The Aircraft tab: same search+sort+paginate shape as All Spots, but one row
     per aircraft. spot_count/last_date/operator_label are cheap to compute in Python
@@ -626,6 +634,8 @@ def search_aircraft_table(
     query = db.query(models.Aircraft).outerjoin(
         models.Manufacturer, models.Aircraft.manufacturer_id == models.Manufacturer.id
     )
+    if category:
+        query = query.filter(models.Aircraft.category == category)
     q = q.strip()
     if q:
         like = f"%{q}%"
@@ -684,6 +694,16 @@ def find_or_create_manufacturer(db: Session, name: str) -> models.Manufacturer:
     db.commit()
     db.refresh(manufacturer)
     return manufacturer
+
+
+def search_manufacturers(db: Session, q: str, limit: int = 8) -> list[models.Manufacturer]:
+    """Autocomplete: prefix/substring match on name, existing records only —
+    creation happens separately via find_or_create_manufacturer."""
+    q = q.strip()
+    query = db.query(models.Manufacturer)
+    if q:
+        query = query.filter(models.Manufacturer.name.ilike(f"%{q}%"))
+    return query.order_by(models.Manufacturer.name).limit(limit).all()
 
 
 def list_manufacturers(db: Session) -> list[schemas.ManufacturerListEntry]:
@@ -785,6 +805,54 @@ def get_tray_photos(db: Session) -> list[models.Photo]:
     )
 
 
+def get_incomplete_spots(db: Session, limit: int = 200) -> list[schemas.IncompleteSpotEntry]:
+    """Spots missing a field expected on every spot: location, manufacturer, type,
+    or aircraft identity (registration/serial — practically always set already,
+    checked anyway for defensiveness). Deliberately excludes fields that are
+    legitimately often unknown (msn, line number, first flight, variant,
+    livery/markings, notes) — those are never flagged."""
+    spots = (
+        db.query(models.Spot)
+        .join(models.Aircraft, models.Spot.aircraft_id == models.Aircraft.id)
+        .filter(
+            (models.Spot.location_id.is_(None) & models.Spot.spot_lat.is_(None))
+            | models.Aircraft.manufacturer_id.is_(None)
+            | models.Aircraft.type.is_(None)
+            | (models.Aircraft.type == "")
+            | (
+                (models.Aircraft.category == models.AircraftCategory.military)
+                & models.Aircraft.serial.is_(None)
+            )
+            | (
+                (models.Aircraft.category != models.AircraftCategory.military)
+                & models.Aircraft.registration.is_(None)
+            )
+        )
+        .order_by(models.Spot.date.desc())
+        .limit(limit)
+        .all()
+    )
+
+    entries = []
+    for s in spots:
+        missing = []
+        if s.location_id is None and s.spot_lat is None:
+            missing.append("location")
+        if s.aircraft.manufacturer_id is None:
+            missing.append("manufacturer")
+        if not s.aircraft.type:
+            missing.append("type")
+        if s.aircraft.category == models.AircraftCategory.military:
+            if not s.aircraft.serial:
+                missing.append("serial")
+        elif not s.aircraft.registration:
+            missing.append("registration")
+        entries.append(
+            schemas.IncompleteSpotEntry(id=s.id, date=s.date, aircraft_identifier=s.aircraft.identifier, missing=missing)
+        )
+    return entries
+
+
 def _spot_has_content(spot: models.Spot) -> bool:
     if spot.photos:
         return True
@@ -880,6 +948,14 @@ def _operator_label_for(spot: models.Spot) -> str | None:
     return spot.airline or spot.unit
 
 
+def _aircraft_manufacturer_name(aircraft: models.Aircraft) -> str | None:
+    """Prefer the linked Manufacturer entity; fall back to the legacy GA
+    free-text field so aircraft tagged before that entity existed still show one."""
+    if aircraft.manufacturer_entity:
+        return aircraft.manufacturer_entity.name
+    return aircraft.manufacturer
+
+
 def get_recent_spots(db: Session, limit: int = 12) -> list[models.Spot]:
     """Recent = spotting date desc (Spot.date) — "what have I been catching lately,"
     not "what have I recently logged." A backfilled old catch won't surface here even
@@ -898,6 +974,8 @@ def to_gallery_card(spot: models.Spot) -> schemas.GallerySpotCard:
         id=spot.id,
         date=spot.date,
         aircraft_identifier=spot.aircraft.identifier,
+        aircraft_type=spot.aircraft.type,
+        manufacturer_name=_aircraft_manufacturer_name(spot.aircraft),
         cover_thumbnail=_spot_cover_thumbnail(spot),
         operator_name=_operator_label_for(spot),
         operator_image=storage.to_url(spot.operator.image) if spot.operator else None,
@@ -905,11 +983,19 @@ def to_gallery_card(spot: models.Spot) -> schemas.GallerySpotCard:
 
 
 def search_spots(
-    db: Session, q: str = "", sort: str = "date", order: str = "desc", page: int = 1, page_size: int = 25
+    db: Session,
+    q: str = "",
+    category: models.AircraftCategory | None = None,
+    sort: str = "date",
+    order: str = "desc",
+    page: int = 1,
+    page_size: int = 25,
 ) -> tuple[list[models.Spot], int]:
     """Server-side search + sort + pagination over the full spot set. Search is a
-    single free-text box across reg/serial, operator, aircraft type, location, notes —
-    no faceted filters this version (deliberate, see HOME_GALLERY_BRIEF)."""
+    single free-text box across reg/serial, operator, aircraft type, location, notes.
+    `category` is the one quick-filter dimension (commercial/military/GA) added on
+    top of that — still not a full faceted filter panel (deliberate, see
+    HOME_GALLERY_BRIEF), just this single additional control."""
     identifier_expr = func.coalesce(models.Aircraft.registration, models.Aircraft.serial)
     operator_name_expr = func.coalesce(models.Operator.name, models.Spot.airline, models.Spot.unit)
 
@@ -919,6 +1005,9 @@ def search_spots(
         .outerjoin(models.Operator, models.Spot.operator_id == models.Operator.id)
         .outerjoin(models.Location, models.Spot.location_id == models.Location.id)
     )
+
+    if category:
+        query = query.filter(models.Aircraft.category == category)
 
     q = q.strip()
     if q:
@@ -963,6 +1052,7 @@ def to_gallery_row(spot: models.Spot) -> schemas.GalleryTableRow:
         date=spot.date,
         aircraft_identifier=spot.aircraft.identifier,
         aircraft_type=spot.aircraft.type,
+        manufacturer_name=_aircraft_manufacturer_name(spot.aircraft),
         aircraft_category=spot.aircraft.category,
         operator_label=_operator_label_for(spot),
         location_label=_location_label(spot),
@@ -1035,6 +1125,7 @@ def to_map_spot(spot: models.Spot) -> schemas.MapSpot | None:
         cover_thumbnail=_spot_cover_thumbnail(spot),
         aircraft_identifier=spot.aircraft.identifier,
         aircraft_type=spot.aircraft.type,
+        manufacturer_name=_aircraft_manufacturer_name(spot.aircraft),
         aircraft_category=spot.aircraft.category,
         operator_label=_operator_label_for(spot),
         date=spot.date,
@@ -1155,6 +1246,18 @@ def get_stats(db: Session) -> schemas.StatsOut:
     year_rows = db.query(year_expr, func.count(models.Spot.id)).group_by(year_expr).order_by(year_expr).all()
     spots_by_year = [schemas.YearCount(year=int(yr), count=count) for yr, count in year_rows if yr is not None]
 
+    # Military-only — scoped via UnitDetail so this never touches commercial/GA numbers elsewhere.
+    branch_rows = (
+        db.query(models.UnitDetail.branch, func.count(models.Spot.id))
+        .join(models.Operator, models.Operator.id == models.UnitDetail.operator_id)
+        .join(models.Spot, models.Spot.operator_id == models.Operator.id)
+        .filter(models.UnitDetail.branch.isnot(None))
+        .group_by(models.UnitDetail.branch)
+        .order_by(func.count(models.Spot.id).desc())
+        .all()
+    )
+    branch_counts = [schemas.NameCount(name=b, count=c) for b, c in branch_rows]
+
     return schemas.StatsOut(
         headline=headline,
         category_counts=category_counts,
@@ -1163,4 +1266,5 @@ def get_stats(db: Session) -> schemas.StatsOut:
         top_locations=top_locations,
         top_manufacturers=top_manufacturers,
         spots_by_year=spots_by_year,
+        branch_counts=branch_counts,
     )

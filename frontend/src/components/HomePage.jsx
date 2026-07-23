@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchRecentLocations, fetchRecentSpots, fetchStats, photoUrl } from "../api.js";
+import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import { formatDate } from "../format.js";
 
 export default function HomePage() {
@@ -76,6 +77,9 @@ export default function HomePage() {
                   )}
                 </div>
                 <div className="cc-reg mono">{card.aircraft_identifier}</div>
+                {formatTypeLine(card.manufacturer_name, card.aircraft_type) && (
+                  <div className="cc-type">{formatTypeLine(card.manufacturer_name, card.aircraft_type)}</div>
+                )}
                 <div className="cc-meta">
                   <span className="cc-date mono">{formatDate(card.date)}</span>
                   {card.operator_name && (

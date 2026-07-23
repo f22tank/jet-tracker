@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from .. import crud, schemas
 from ..database import get_db
+from ..models import AircraftCategory
 
 router = APIRouter(prefix="/api/aircraft", tags=["aircraft"])
 
@@ -27,14 +28,18 @@ def find(value: str, db: Session = Depends(get_db)):
 @router.get("/table", response_model=schemas.AircraftTableResponse)
 def table(
     q: str = "",
+    category: Optional[AircraftCategory] = None,
     sort: Literal["identifier", "type", "category", "manufacturer", "spot_count", "last_date"] = "identifier",
     order: Literal["asc", "desc"] = "asc",
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """The Aircraft tab: search+sort+paginate over every aircraft, same shape as All Spots."""
-    items, total = crud.search_aircraft_table(db, q=q, sort=sort, order=order, page=page, page_size=page_size)
+    """The Aircraft tab: search+sort+paginate over every aircraft, same shape as All
+    Spots, plus the one category quick-filter (commercial/military/GA)."""
+    items, total = crud.search_aircraft_table(
+        db, q=q, category=category, sort=sort, order=order, page=page, page_size=page_size
+    )
     return schemas.AircraftTableResponse(items=items, total=total, page=page, page_size=page_size)
 
 

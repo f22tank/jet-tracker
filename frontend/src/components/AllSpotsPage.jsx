@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchGallerySpots, photoUrl } from "../api.js";
+import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import { formatDate } from "../format.js";
+import CategoryFilter from "./CategoryFilter.jsx";
 import SortHeader from "./SortHeader.jsx";
 
 const PAGE_SIZE = 25;
 
 export default function AllSpotsPage() {
   const [q, setQ] = useState("");
+  const [category, setCategory] = useState("");
   const [sort, setSort] = useState("date");
   const [order, setOrder] = useState("desc");
   const [page, setPage] = useState(1);
@@ -18,12 +21,12 @@ export default function AllSpotsPage() {
     setTableLoading(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      fetchGallerySpots({ q, sort, order, page, pageSize: PAGE_SIZE })
+      fetchGallerySpots({ q, category, sort, order, page, pageSize: PAGE_SIZE })
         .then(setTable)
         .finally(() => setTableLoading(false));
     }, 200);
     return () => clearTimeout(debounceRef.current);
-  }, [q, sort, order, page]);
+  }, [q, category, sort, order, page]);
 
   function handleSort(key) {
     if (sort === key) {
@@ -54,6 +57,13 @@ export default function AllSpotsPage() {
               setPage(1);
             }}
           />
+          <CategoryFilter
+            value={category}
+            onChange={(v) => {
+              setCategory(v);
+              setPage(1);
+            }}
+          />
         </div>
 
         <div className="spots-table-wrap">
@@ -79,7 +89,7 @@ export default function AllSpotsPage() {
                     )}
                   </td>
                   <td className="mono">{row.aircraft_identifier}</td>
-                  <td>{row.aircraft_type}</td>
+                  <td>{formatTypeLine(row.manufacturer_name, row.aircraft_type)}</td>
                   <td>{row.operator_label || "—"}</td>
                   <td>{row.location_label}</td>
                   <td className="mono">{formatDate(row.date)}</td>

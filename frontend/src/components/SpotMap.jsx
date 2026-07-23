@@ -6,6 +6,7 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.heat";
 import { useEffect, useRef, useState } from "react";
 import { fetchMapFacets, fetchMapSpots, photoUrl } from "../api.js";
+import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import { formatDate } from "../format.js";
 
 // Radar-blip marker in the app's accent green — replaces Leaflet's default blue
@@ -35,6 +36,14 @@ function buildPopupContent(group) {
     reg.textContent = s.aircraft_identifier || "—";
     container.appendChild(reg);
 
+    const typeLine = formatTypeLine(s.manufacturer_name, s.aircraft_type);
+    if (typeLine) {
+      const type = document.createElement("div");
+      type.className = "mp-type";
+      type.textContent = typeLine;
+      container.appendChild(type);
+    }
+
     const meta = document.createElement("div");
     meta.className = "mp-meta";
     meta.textContent = [formatDate(s.date), s.operator_label].filter(Boolean).join(" · ");
@@ -55,7 +64,8 @@ function buildPopupContent(group) {
     for (const s of group) {
       const link = document.createElement("a");
       link.href = `/spot?spot=${s.id}`;
-      link.textContent = `${s.aircraft_identifier || "?"} · ${formatDate(s.date)}`;
+      const typeLine = formatTypeLine(s.manufacturer_name, s.aircraft_type);
+      link.textContent = [s.aircraft_identifier || "?", typeLine, formatDate(s.date)].filter(Boolean).join(" · ");
       list.appendChild(link);
     }
     container.appendChild(list);

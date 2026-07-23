@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, fetchTray, ingestPhotos, photoUrl, resolvePhotos } from "../api.js";
+import { ApiError, fetchIncompleteSpots, fetchTray, ingestPhotos, photoUrl, resolvePhotos } from "../api.js";
 import { formatDate } from "../format.js";
 import AircraftTagInput from "./AircraftTagInput.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
 import LocationTagInput from "./LocationTagInput.jsx";
 import OperatorTagInput from "./OperatorTagInput.jsx";
+
+const MISSING_LABELS = {
+  location: "location",
+  manufacturer: "manufacturer",
+  type: "type",
+  registration: "registration",
+  serial: "serial",
+};
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -31,6 +39,9 @@ export default function TrayPage() {
   const [conflict, setConflict] = useState(null); // { payload, conflictingSpot }
   const [bulkError, setBulkError] = useState(null);
 
+  const [incompleteSpots, setIncompleteSpots] = useState([]);
+  const [incompleteLoading, setIncompleteLoading] = useState(true);
+
   const load = useCallback(() => {
     setLoading(true);
     fetchTray()
@@ -42,6 +53,12 @@ export default function TrayPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    fetchIncompleteSpots()
+      .then(setIncompleteSpots)
+      .finally(() => setIncompleteLoading(false));
+  }, []);
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -184,9 +201,32 @@ export default function TrayPage() {
   return (
     <div className="wrap tray">
       <header className="tray-head">
-        <h1>Tray</h1>
+        <h1>Upload</h1>
         <span className="mono count">{photos.length} unassigned photo{photos.length === 1 ? "" : "s"}</span>
       </header>
+
+      {!incompleteLoading && incompleteSpots.length > 0 && (
+        <div className="tray-section">
+          <h2>
+            Needs Attention <span className="mono count">{incompleteSpots.length}</span>
+          </h2>
+          <div className="incomplete-list">
+            {incompleteSpots.map((s) => (
+              <a key={s.id} href={`/spot?spot=${s.id}`} className="lrow incomplete-row" style={{ textDecoration: "none" }}>
+                <span className="ld">{formatDate(s.date)}</span>
+                <span className="ll">{s.aircraft_identifier || "—"}</span>
+                <span className="lc">
+                  {s.missing.map((m) => (
+                    <span key={m} className={`missing-chip${m === "location" ? " missing-chip--high" : ""}`}>
+                      {MISSING_LABELS[m] || m}
+                    </span>
+                  ))}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div
         className={`dropzone${dropActive ? " active" : ""}${uploading ? " busy" : ""}`}

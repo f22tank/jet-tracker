@@ -4,6 +4,7 @@ import { fetchOperator, photoUrl, removeOperatorLogo, updateOperator, uploadOper
 import { CHART_COLORS, barScaleOptions, chartBaseOptions } from "../chartSetup.js";
 import { formatDate } from "../format.js";
 import AssetImageUpload from "./AssetImageUpload.jsx";
+import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import EditableField from "./EditableField.jsx";
 import SpotMap from "./SpotMap.jsx";
 
@@ -270,7 +271,7 @@ export default function OperatorPage({ operatorId }) {
             </span>
             <span className="ld">{formatDate(entry.date)}</span>
             <span className="ll">
-              {entry.aircraft_identifier} · {entry.aircraft_type}
+              {entry.aircraft_identifier} · {formatTypeLine(entry.manufacturer_name, entry.aircraft_type)}
             </span>
             <span className="lc">{entry.location_label}</span>
           </a>

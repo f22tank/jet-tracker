@@ -1,10 +1,11 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
 from ..database import get_db
+from ..models import AircraftCategory
 
 router = APIRouter(prefix="/api/gallery", tags=["gallery"])
 
@@ -20,14 +21,16 @@ def recent(limit: int = Query(12, ge=1, le=50), db: Session = Depends(get_db)):
 @router.get("/spots", response_model=schemas.GalleryTableResponse)
 def spots(
     q: str = "",
+    category: Optional[AircraftCategory] = None,
     sort: Literal["date", "created_at", "identifier", "operator", "type"] = "date",
     order: Literal["asc", "desc"] = "desc",
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """The table: server-side free-text search + sort + pagination over every spot."""
-    items, total = crud.search_spots(db, q=q, sort=sort, order=order, page=page, page_size=page_size)
+    """The table: server-side free-text search + sort + pagination over every spot,
+    plus the one category quick-filter (commercial/military/GA)."""
+    items, total = crud.search_spots(db, q=q, category=category, sort=sort, order=order, page=page, page_size=page_size)
     return schemas.GalleryTableResponse(
         items=[crud.to_gallery_row(s) for s in items],
         total=total,

@@ -98,6 +98,12 @@ export function fetchTray() {
   return request("/api/photos/tray");
 }
 
+/** The Upload tab's "Needs attention" view — spots missing location,
+ * manufacturer, type, or aircraft identity. */
+export function fetchIncompleteSpots() {
+  return request("/api/spots/incomplete");
+}
+
 /** Throws ApiError with status 409 and body.conflicting_spot when the target
  * (aircraft, date) already has content — the tray's warn-then-merge. Retry with
  * { ...payload, force: true } to confirm. */
@@ -230,8 +236,9 @@ export function fetchRecentSpots(limit = 12) {
   return request(`/api/gallery/recent?limit=${limit}`);
 }
 
-export function fetchGallerySpots({ q = "", sort = "date", order = "desc", page = 1, pageSize = 25 } = {}) {
+export function fetchGallerySpots({ q = "", category = "", sort = "date", order = "desc", page = 1, pageSize = 25 } = {}) {
   const params = new URLSearchParams({ q, sort, order, page: String(page), page_size: String(pageSize) });
+  if (category) params.set("category", category);
   return request(`/api/gallery/spots?${params.toString()}`);
 }
 
@@ -239,13 +246,18 @@ export function fetchOperatorsList(type) {
   return request(`/api/operators?type=${type}`);
 }
 
-export function fetchAircraftTable({ q = "", sort = "identifier", order = "asc", page = 1, pageSize = 25 } = {}) {
+export function fetchAircraftTable({ q = "", category = "", sort = "identifier", order = "asc", page = 1, pageSize = 25 } = {}) {
   const params = new URLSearchParams({ q, sort, order, page: String(page), page_size: String(pageSize) });
+  if (category) params.set("category", category);
   return request(`/api/aircraft/table?${params.toString()}`);
 }
 
 export function fetchManufacturersList() {
   return request("/api/manufacturers");
+}
+
+export function searchManufacturers(q) {
+  return request(`/api/manufacturers/search?q=${encodeURIComponent(q)}`);
 }
 
 export function fetchManufacturer(manufacturerId) {

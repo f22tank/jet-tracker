@@ -14,6 +14,7 @@ import {
 } from "../api.js";
 import CollisionDialog from "./CollisionDialog.jsx";
 import LocationField from "./LocationField.jsx";
+import ManufacturerField from "./ManufacturerField.jsx";
 import OperatorField from "./OperatorField.jsx";
 import RegistrationChangeDialog from "./RegistrationChangeDialog.jsx";
 
@@ -303,13 +304,11 @@ export default function SpotEditModal({ spot, onClose, onUpdated, onMerged }) {
               />
             )}
 
-            <TextRow label="Type" value={aircraft.type} placeholder="add type" onCommit={(v) => saveAircraftField("type", v)} />
-            <TextRow
-              label="Manufacturer"
-              value={aircraft.manufacturer_entity?.name}
-              placeholder="add manufacturer"
-              onCommit={(v) => saveAircraftField("manufacturer_name", v)}
+            <ManufacturerField
+              manufacturerEntity={aircraft.manufacturer_entity}
+              onSave={(name) => saveAircraftField("manufacturer_name", name)}
             />
+            <TextRow label="Type" value={aircraft.type} placeholder="add type" onCommit={(v) => saveAircraftField("type", v)} />
 
             {category === "commercial" && (
               <>
