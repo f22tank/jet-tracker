@@ -29,8 +29,10 @@ body{
   position:sticky;top:0;z-index:20;
 }
 .topbar-in{display:flex;align-items:center;justify-content:space-between;height:56px}
-.brand{font-family:'Archivo';font-weight:800;letter-spacing:.14em;font-size:13px;color:var(--steel);text-transform:uppercase}
-.brand b{color:var(--accent)}
+.wordmark{font-family:'Spline Sans Mono',monospace;font-weight:700;text-transform:uppercase;letter-spacing:.364em;color:var(--aluminum)}
+.brand{display:flex;align-items:center;gap:8px}
+.brand img{display:block}
+.brand .wordmark{font-size:13px}
 .nav{display:flex;gap:2px;align-items:center}
 .nav button{
   background:var(--panel);border:1px solid var(--hairline);color:var(--aluminum);
@@ -384,9 +386,12 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 
 /* ---- app nav ---- */
 .app-nav{
-  display:flex;gap:2px;padding:10px 24px;border-bottom:1px solid var(--hairline);
+  display:flex;align-items:center;gap:2px;padding:10px 24px;border-bottom:1px solid var(--hairline);
   background:linear-gradient(180deg,#20262c,#1c2126);
 }
+.app-nav .nav-brand{display:flex;align-items:center;gap:8px;margin-right:18px}
+.app-nav .nav-brand img{display:block}
+.app-nav .nav-links{display:flex;gap:2px}
 .app-nav a{
   color:var(--steel);text-decoration:none;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
   padding:6px 12px;border-radius:4px;transition:.12s;
@@ -506,7 +511,8 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 /* ---- home / gallery ---- */
 .home{padding-top:24px}
 .home-head{margin-bottom:24px}
-.home-head h1{font-family:'Archivo';font-size:22px;font-weight:800;letter-spacing:.04em;color:var(--paper)}
+.home-head .nav-brand{display:flex;align-items:center;gap:12px}
+.home-head .wordmark{font-size:26px;color:var(--paper)}
 .home-section{margin-bottom:36px}
 .home-section h2{
   font-family:'Archivo';font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;

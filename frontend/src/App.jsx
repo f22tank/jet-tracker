@@ -101,33 +101,39 @@ export default function App() {
   return (
     <>
       <div className="app-nav mono">
-        <NavLink to="/" active={isHome}>
-          Home
-        </NavLink>
-        <NavLink to="/stats" active={isStats}>
-          Stats
-        </NavLink>
-        <NavLink to="/map" active={isMap}>
-          Map
-        </NavLink>
-        <NavLink to="/spots" active={isAllSpots}>
-          All Spots
-        </NavLink>
-        <NavLink to="/aircraft-list" active={isAircraftList || isAircraftDetail}>
-          Aircraft
-        </NavLink>
-        <NavLink to="/operators" active={isOperatorsList || isOperatorDetail}>
-          Operators
-        </NavLink>
-        <NavLink to="/locations" active={isLocationsList || isLocation}>
-          Locations
-        </NavLink>
-        <NavLink to="/manufacturers" active={isManufacturersList || isManufacturerDetail}>
-          Manufacturers
-        </NavLink>
-        <NavLink to="/tray" active={isTray}>
-          Upload
-        </NavLink>
+        <div className="nav-brand">
+          <img src="/logo-small.svg" alt="" width="20" height="20" />
+          <span className="wordmark">Tally</span>
+        </div>
+        <div className="nav-links">
+          <NavLink to="/" active={isHome}>
+            Home
+          </NavLink>
+          <NavLink to="/stats" active={isStats}>
+            Stats
+          </NavLink>
+          <NavLink to="/map" active={isMap}>
+            Map
+          </NavLink>
+          <NavLink to="/spots" active={isAllSpots}>
+            All Spots
+          </NavLink>
+          <NavLink to="/aircraft-list" active={isAircraftList || isAircraftDetail}>
+            Aircraft
+          </NavLink>
+          <NavLink to="/operators" active={isOperatorsList || isOperatorDetail}>
+            Operators
+          </NavLink>
+          <NavLink to="/locations" active={isLocationsList || isLocation}>
+            Locations
+          </NavLink>
+          <NavLink to="/manufacturers" active={isManufacturersList || isManufacturerDetail}>
+            Manufacturers
+          </NavLink>
+          <NavLink to="/tray" active={isTray}>
+            Upload
+          </NavLink>
+        </div>
       </div>
       {page}
     </>

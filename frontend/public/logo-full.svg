@@ -1,0 +1,11 @@
+<svg viewBox="0 0 172 172" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="86" cy="86" r="86" fill="none" stroke="#2e363e" stroke-width="1"/>
+  <circle cx="86" cy="86" r="59" fill="none" stroke="#2e363e" stroke-width="1"/>
+  <circle cx="86" cy="86" r="30" fill="none" stroke="#2e363e" stroke-width="1"/>
+  <line x1="0" y1="86" x2="172" y2="86" stroke="#2e363e" stroke-width="0.75"/>
+  <line x1="86" y1="0" x2="86" y2="172" stroke="#2e363e" stroke-width="0.75"/>
+  <path d="M86 86 L86 0 A86 86 0 0 1 147 25 Z" fill="#4ade80" opacity="0.15"/>
+  <line x1="86" y1="86" x2="147" y2="25" stroke="#4ade80" stroke-width="2.2"/>
+  <circle cx="104" cy="30" r="4.6" fill="#4ade80"/>
+  <circle cx="104" cy="30" r="10" fill="#4ade80" opacity="0.16"/>
+</svg>

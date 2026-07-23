@@ -31,7 +31,10 @@ export default function HomePage() {
   return (
     <div className="wrap home">
       <header className="home-head">
-        <h1>Jet Tracker</h1>
+        <div className="nav-brand">
+          <img src="/logo-full.svg" alt="" width="32" height="32" />
+          <span className="wordmark">Tally</span>
+        </div>
       </header>
 
       {headline && (

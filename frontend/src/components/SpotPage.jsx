@@ -36,6 +36,14 @@ export default function SpotPage({ spotId: initialSpotId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!spot) return;
+    document.title = `${spot.aircraft.identifier} · ${formatDate(spot.date)} — Tally`;
+    return () => {
+      document.title = "Tally";
+    };
+  }, [spot]);
+
   function navigateTo(id) {
     const url = new URL(window.location.href);
     url.searchParams.set("spot", id);
@@ -109,7 +117,8 @@ export default function SpotPage({ spotId: initialSpotId }) {
       <div className="topbar">
         <div className="wrap topbar-in">
           <div className="brand">
-            SPOT<b>·</b>BOOK
+            <img src="/logo-small.svg" alt="" width="18" height="18" />
+            <span className="wordmark">Tally</span>
           </div>
           <div className="nav">
             <button disabled={!prevEntry} onClick={() => prevEntry && navigateTo(prevEntry.id)}>

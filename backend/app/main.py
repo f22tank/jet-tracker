@@ -24,7 +24,7 @@ ensure_new_columns()
 
 os.makedirs(storage.PHOTOS_DIR, exist_ok=True)
 
-app = FastAPI(title="Jet Tracker API")
+app = FastAPI(title="Tally API")
 
 app.add_middleware(
     CORSMiddleware,
