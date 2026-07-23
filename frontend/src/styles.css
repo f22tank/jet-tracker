@@ -21,7 +21,7 @@ body{
   padding:0 0 64px;
 }
 .mono{font-family:'Spline Sans Mono',monospace}
-.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+.wrap{max-width:1440px;margin:0 auto;padding:0 24px}
 
 .topbar{
   border-bottom:1px solid var(--hairline);
@@ -71,6 +71,7 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .type-line .sep{color:var(--hairline);margin:0 10px}
 
 .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:1px;background:var(--hairline);border:1px solid var(--hairline);margin-top:24px}
+.grid.grid--wide-rail{grid-template-columns:1fr 1.6fr}
 .cell{background:var(--tarmac)}
 
 .cover{position:relative;background:#12161a;aspect-ratio:3/2;overflow:hidden;cursor:zoom-in}
@@ -108,13 +109,11 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .edit-cancel{display:inline-block;margin-top:6px;font-size:11px;color:var(--steel);cursor:pointer}
 .edit-cancel:hover{color:var(--aluminum)}
 .map{margin-top:12px;height:120px;border:1px solid var(--hairline);border-radius:4px;overflow:hidden;position:relative;background:#161b20}
-.map svg{position:absolute;inset:0;width:100%;height:100%}
-.map .pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%)}
-.map-coords{position:absolute;bottom:6px;left:8px;font-size:10px;color:var(--steel);background:rgba(28,33,38,.75);padding:2px 6px;border-radius:3px}
+.map-coords{position:absolute;bottom:6px;left:8px;z-index:400;font-size:10px;color:var(--steel);background:rgba(28,33,38,.75);padding:2px 6px;border-radius:3px}
 
-.drow{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--hairline)}
+.drow{display:grid;grid-template-columns:max-content 1fr;gap:18px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--hairline)}
 .drow:last-child{border-bottom:none}
-.drow .k{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--steel)}
+.drow .k{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--steel);white-space:nowrap}
 .drow .v{font-size:14px;color:var(--aluminum);cursor:pointer;position:relative;padding:3px 26px 3px 6px;margin:-3px -6px;border-radius:3px;transition:.12s}
 .drow .v:hover{background:var(--panel);box-shadow:inset 0 0 0 1px var(--accent)}
 .drow .v.empty{color:#59636c;font-style:italic}
@@ -122,12 +121,28 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .drow .v:hover .edit{opacity:1}
 .drow .v.date-v b{font-family:'Spline Sans Mono';font-weight:500}
 .drow .v.saving{opacity:.5;pointer-events:none}
-.drow .v input,.drow .v textarea,.drow .v select{
+.drow .v input,.drow .v textarea{
   background:var(--panel-2);border:1px solid var(--sky);color:var(--aluminum);
   font:inherit;padding:4px 6px;border-radius:3px;width:100%;
 }
+.drow .v select{
+  background:var(--panel-2);border:1px solid var(--hairline);color:var(--aluminum);
+  font:inherit;padding:4px 6px;border-radius:3px;width:auto;min-width:150px;cursor:pointer;
+}
 .drow .v textarea{resize:vertical;line-height:1.5}
 .drow .v .err{display:block;color:var(--warn);font-size:11px;margin-top:4px;font-family:'Spline Sans Mono'}
+
+/* Two-column field layout for detail panels with a dozen-plus rows (aircraft,
+   location) — CSS multi-column so the row list itself stays a flat, unchunked
+   map() in JSX regardless of which conditional fields are present. */
+.drow-grid{column-count:2;column-gap:32px}
+.drow-grid .drow{break-inside:avoid}
+@media(max-width:820px){
+  .drow-grid{column-count:1}
+}
+
+.date-range{display:flex;flex-direction:column;align-items:center;line-height:1.3}
+.date-range .date-range-sep{color:var(--steel);font-size:11px}
 
 .operator-v{display:flex;align-items:center;gap:8px}
 .operator-thumb{width:22px;height:22px;border-radius:3px;object-fit:cover;background:var(--panel-2);border:1px solid var(--hairline)}
@@ -377,7 +392,7 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .unplaced button:disabled{opacity:.5;cursor:default}
 
 @media(max-width:820px){
-  .grid{grid-template-columns:1fr}
+  .grid,.grid.grid--wide-rail{grid-template-columns:1fr}
   .reg{font-size:34px}
   .thumbs{grid-template-columns:repeat(2,1fr)}
   .lrow{grid-template-columns:110px 1fr;gap:8px}
@@ -646,8 +661,18 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 }
 
 /* leaflet.markercluster ships its own yellow/orange/blue ring colors via vendor
-   CSS — override to the app's green accent so cluster bubbles match spot markers. */
-.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background-color:rgba(74,222,128,.25)}
+   CSS — override to a single blue so cluster bubbles match the blue spot pins
+   (data encoding, not UI chrome — the green accent stays out of this). */
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background-color:rgba(59,130,246,.25)}
 .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{
-  background-color:rgba(74,222,128,.65);color:#12161a;font-weight:700;
+  background-color:rgba(59,130,246,.65);color:#12161a;font-weight:700;
 }
+
+/* ---- Upload tab: deep-linked field highlight ---- */
+.field-target{scroll-margin-top:80px}
+.field-target.field-target--flash{animation:field-flash 1.6s ease-out}
+@keyframes field-flash{
+  0%{box-shadow:inset 0 0 0 1px var(--sky);background:rgba(95,176,212,.14)}
+  100%{box-shadow:inset 0 0 0 0 transparent;background:transparent}
+}
+.dest-hint{color:var(--steel);font-size:10px;letter-spacing:.04em;margin-left:6px}

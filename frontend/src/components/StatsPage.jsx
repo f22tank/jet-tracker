@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { fetchStats } from "../api.js";
-import { CHART_COLORS, barScaleOptions, chartBaseOptions } from "../chartSetup.js";
+import { CHART_COLORS, CHART_SERIES_COLOR, CHART_SERIES_HOVER_COLOR, barScaleOptions, chartBaseOptions } from "../chartSetup.js";
 
 const CATEGORY_LABELS = { commercial: "Commercial", military: "Military", ga: "GA" };
 
@@ -23,8 +23,8 @@ function yearBarData(spotsByYear) {
       {
         label: "Spots",
         data: spotsByYear.map((y) => y.count),
-        backgroundColor: "#4ade80",
-        hoverBackgroundColor: "#22c55e",
+        backgroundColor: CHART_SERIES_COLOR,
+        hoverBackgroundColor: CHART_SERIES_HOVER_COLOR,
         borderRadius: 3,
       },
     ],
@@ -38,8 +38,8 @@ function horizontalBarData(items, labelKey = "name", valueKey = "spot_count") {
       {
         label: "Spots",
         data: items.map((i) => i[valueKey]),
-        backgroundColor: "#4ade80",
-        hoverBackgroundColor: "#22c55e",
+        backgroundColor: CHART_SERIES_COLOR,
+        hoverBackgroundColor: CHART_SERIES_HOVER_COLOR,
         borderRadius: 3,
       },
     ],

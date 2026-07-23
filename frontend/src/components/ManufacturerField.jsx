@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ManufacturerTagInput from "./ManufacturerTagInput.jsx";
 
 /** Displays an aircraft's linked Manufacturer (name-as-link to its page), or an
  * "add manufacturer" affordance — editing always goes through the picker,
  * never free text, since this is an entity FK. */
-export default function ManufacturerField({ manufacturerEntity, onSave }) {
+export default function ManufacturerField({ id, manufacturerEntity, onSave, autoEdit = false }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (autoEdit) setEditing(true);
+  }, [autoEdit]);
 
   async function handleTag(name) {
     setSaving(true);
@@ -23,7 +28,7 @@ export default function ManufacturerField({ manufacturerEntity, onSave }) {
   }
 
   return (
-    <div className="drow">
+    <div id={id} className={`drow${id ? " field-target" : ""}`}>
       <span className="k">Manufacturer</span>
       {editing ? (
         <span className={`v${saving ? " saving" : ""}`}>

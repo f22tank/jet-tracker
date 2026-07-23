@@ -508,6 +508,7 @@ class IncompleteSpotEntry(BaseModel):
 
     id: int
     date: datetime.date
+    aircraft_id: int
     aircraft_identifier: Optional[str] = None
     missing: list[str]
 

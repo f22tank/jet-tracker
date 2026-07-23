@@ -848,7 +848,9 @@ def get_incomplete_spots(db: Session, limit: int = 200) -> list[schemas.Incomple
         elif not s.aircraft.registration:
             missing.append("registration")
         entries.append(
-            schemas.IncompleteSpotEntry(id=s.id, date=s.date, aircraft_identifier=s.aircraft.identifier, missing=missing)
+            schemas.IncompleteSpotEntry(
+                id=s.id, date=s.date, aircraft_id=s.aircraft_id, aircraft_identifier=s.aircraft.identifier, missing=missing
+            )
         )
     return entries
 

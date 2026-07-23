@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function EditableField({
+  id,
   label,
   value,
   displayValue,
@@ -9,6 +10,7 @@ export default function EditableField({
   mono = false,
   multiline = false,
   block = false,
+  autoEdit = false,
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
@@ -20,6 +22,13 @@ export default function EditableField({
     setError(null);
     setEditing(true);
   }
+
+  // Deep-link support (Upload tab "needs attention" rows): open straight into
+  // edit mode when this field is the one the user was routed here to fix.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (autoEdit) startEdit();
+  }, [autoEdit]);
 
   async function commit() {
     if (draft === (value ?? "")) {
@@ -72,7 +81,7 @@ export default function EditableField({
   }
 
   return (
-    <div className="drow">
+    <div id={id} className={`drow${id ? " field-target" : ""}`}>
       <span className="k">{label}</span>
       {editing ? (
         <span className={`v${saving ? " saving" : ""}`}>

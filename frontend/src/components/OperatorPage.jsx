@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { fetchOperator, photoUrl, removeOperatorLogo, updateOperator, uploadOperatorLogo } from "../api.js";
-import { CHART_COLORS, barScaleOptions, chartBaseOptions } from "../chartSetup.js";
+import { CHART_COLORS, CHART_SERIES_COLOR, CHART_SERIES_HOVER_COLOR, barScaleOptions, chartBaseOptions } from "../chartSetup.js";
 import { formatDate } from "../format.js";
 import AssetImageUpload from "./AssetImageUpload.jsx";
 import { formatTypeLine } from "./AircraftTypeLine.jsx";
+import DateRangeStat from "./DateRangeStat.jsx";
 import EditableField from "./EditableField.jsx";
 import SpotMap from "./SpotMap.jsx";
 
@@ -35,7 +36,7 @@ function locationBarData(topLocations) {
   return {
     labels: topLocations.map((l) => l.name),
     datasets: [
-      { label: "Spots", data: topLocations.map((l) => l.spot_count), backgroundColor: "#4ade80", hoverBackgroundColor: "#22c55e", borderRadius: 3 },
+      { label: "Spots", data: topLocations.map((l) => l.spot_count), backgroundColor: CHART_SERIES_COLOR, hoverBackgroundColor: CHART_SERIES_HOVER_COLOR, borderRadius: 3 },
     ],
   };
 }
@@ -44,7 +45,7 @@ function yearBarData(spotsByYear) {
   return {
     labels: spotsByYear.map((y) => String(y.year)),
     datasets: [
-      { label: "Spots", data: spotsByYear.map((y) => y.count), backgroundColor: "#4ade80", hoverBackgroundColor: "#22c55e", borderRadius: 3 },
+      { label: "Spots", data: spotsByYear.map((y) => y.count), backgroundColor: CHART_SERIES_COLOR, hoverBackgroundColor: CHART_SERIES_HOVER_COLOR, borderRadius: 3 },
     ],
   };
 }
@@ -146,12 +147,7 @@ export default function OperatorPage({ operatorId }) {
             <div className="op-stat-label">distinct aircraft</div>
           </div>
           <div className="op-stat">
-            <div className="op-stat-num mono">
-              {stats.first_date ? formatDate(stats.first_date) : "—"}
-              {stats.first_date && stats.last_date && stats.first_date !== stats.last_date
-                ? ` – ${formatDate(stats.last_date)}`
-                : ""}
-            </div>
+            <DateRangeStat firstDate={stats.first_date} lastDate={stats.last_date} />
             <div className="op-stat-label">date range</div>
           </div>
         </div>

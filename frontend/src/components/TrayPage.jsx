@@ -14,6 +14,28 @@ const MISSING_LABELS = {
   serial: "serial",
 };
 
+// Which fields live on the Aircraft record vs. the Spot record — determines
+// where a "needs attention" row should route to. A field maps 1:1 to the query
+// param the target page reads to deep-link into (and, where supported,
+// auto-open) the offending field.
+const AIRCRAFT_FIELDS = new Set(["manufacturer", "type", "registration", "serial", "category"]);
+
+/** Route each incomplete-spot row to wherever its missing field actually lives,
+ * instead of always linking the spot page. A single aircraft-side field goes
+ * straight to the aircraft page (deep-linked to that field); a missing location,
+ * or a mix of spot- and aircraft-side gaps, goes to the spot page — the natural
+ * hub, since it links onward to the aircraft too. */
+function destinationFor(entry) {
+  const hasLocation = entry.missing.includes("location");
+  const aircraftFields = entry.missing.filter((m) => AIRCRAFT_FIELDS.has(m));
+
+  if (!hasLocation && aircraftFields.length > 0) {
+    const focus = aircraftFields.length === 1 ? `&focus=${aircraftFields[0]}` : "";
+    return { href: `/aircraft?id=${entry.aircraft_id}${focus}`, label: "aircraft" };
+  }
+  return { href: `/spot?spot=${entry.id}`, label: "spot" };
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -211,19 +233,23 @@ export default function TrayPage() {
             Needs Attention <span className="mono count">{incompleteSpots.length}</span>
           </h2>
           <div className="incomplete-list">
-            {incompleteSpots.map((s) => (
-              <a key={s.id} href={`/spot?spot=${s.id}`} className="lrow incomplete-row" style={{ textDecoration: "none" }}>
-                <span className="ld">{formatDate(s.date)}</span>
-                <span className="ll">{s.aircraft_identifier || "—"}</span>
-                <span className="lc">
-                  {s.missing.map((m) => (
-                    <span key={m} className={`missing-chip${m === "location" ? " missing-chip--high" : ""}`}>
-                      {MISSING_LABELS[m] || m}
-                    </span>
-                  ))}
-                </span>
-              </a>
-            ))}
+            {incompleteSpots.map((s) => {
+              const dest = destinationFor(s);
+              return (
+                <a key={s.id} href={dest.href} className="lrow incomplete-row" style={{ textDecoration: "none" }}>
+                  <span className="ld">{formatDate(s.date)}</span>
+                  <span className="ll">{s.aircraft_identifier || "—"}</span>
+                  <span className="lc">
+                    {s.missing.map((m) => (
+                      <span key={m} className={`missing-chip${m === "location" ? " missing-chip--high" : ""}`}>
+                        {MISSING_LABELS[m] || m}
+                      </span>
+                    ))}
+                    <span className="dest-hint mono">→ {dest.label}</span>
+                  </span>
+                </a>
+              );
+            })}
           </div>
         </div>
       )}

@@ -9,11 +9,12 @@ import { fetchMapFacets, fetchMapSpots, photoUrl } from "../api.js";
 import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import { formatDate } from "../format.js";
 
-// Radar-blip marker in the app's accent green — replaces Leaflet's default blue
-// pin (whose PNG-based icon also can't be recolored via CSS custom properties).
+// Radar-blip marker in conventional map-pin blue — data encoding, not UI chrome,
+// so it stays independent of the app's green accent. A divIcon SVG rather than
+// Leaflet's default PNG pin so it can still be recolored/sized via markup.
 const spotIcon = L.divIcon({
   className: "spot-marker",
-  html: '<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="#4ade80" fill-opacity="0.25"/><circle cx="9" cy="9" r="4" fill="#4ade80" stroke="#12161a" stroke-width="1.5"/></svg>',
+  html: '<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="#3b82f6" fill-opacity="0.25"/><circle cx="9" cy="9" r="4" fill="#3b82f6" stroke="#12161a" stroke-width="1.5"/></svg>',
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 });
@@ -156,8 +157,8 @@ export default function SpotMap({ scope = {}, hiddenFilters = [], defaultFilters
         blur: 25,
         max: 1,
         minOpacity: 0.4,
-        // Monochrome green ramp instead of leaflet.heat's default rainbow gradient.
-        gradient: { 0.3: "#123524", 0.6: "#22c55e", 1: "#4ade80" },
+        // Standard blue→red gradient — conventional low-to-high intensity reading.
+        gradient: { 0.4: "blue", 0.6: "cyan", 0.7: "lime", 0.8: "yellow", 1: "red" },
       }).addTo(map);
     } else {
       const groups = new Map();

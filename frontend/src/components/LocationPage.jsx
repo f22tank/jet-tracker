@@ -9,8 +9,9 @@ import {
 } from "../api.js";
 import { formatDate } from "../format.js";
 import AssetImageUpload from "./AssetImageUpload.jsx";
+import DateRangeStat from "./DateRangeStat.jsx";
 import EditableField from "./EditableField.jsx";
-import MiniMap from "./MiniMap.jsx";
+import SpotMap from "./SpotMap.jsx";
 
 function toNullableFloat(v) {
   if (v === "" || v == null) return null;
@@ -80,7 +81,7 @@ export default function LocationPage({ locationId }) {
         <div className="ledger-head">
           <h2>Details</h2>
         </div>
-        <div style={{ padding: "4px 18px" }}>
+        <div className="drow-grid" style={{ padding: "4px 18px" }}>
           <EditableField label="Name" value={location.name} placeholder="add name" onSave={(v) => saveField("name", v)} />
           <EditableField label="ICAO" value={location.icao} placeholder="add ICAO" mono onSave={(v) => saveField("icao", v)} />
           <EditableField label="IATA" value={location.iata} placeholder="add IATA" mono onSave={(v) => saveField("iata", v)} />
@@ -103,7 +104,19 @@ export default function LocationPage({ locationId }) {
         </div>
       </div>
 
-      <MiniMap lat={location.lat} lon={location.lon} />
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
+          <h2>Map</h2>
+          <span className="sub mono">every spot caught at {location.name}</span>
+        </div>
+        <div style={{ padding: 14 }}>
+          <SpotMap
+            scope={{ location_id: location.id }}
+            hiddenFilters={["location"]}
+            emptyMessage="No plotted spots yet for this location."
+          />
+        </div>
+      </div>
 
       <div className="ledger" style={{ marginTop: 24 }}>
         <div className="ledger-head">
@@ -123,12 +136,7 @@ export default function LocationPage({ locationId }) {
             <div className="op-stat-label">distinct operators</div>
           </div>
           <div className="op-stat">
-            <div className="op-stat-num mono">
-              {stats.first_date ? formatDate(stats.first_date) : "—"}
-              {stats.first_date && stats.last_date && stats.first_date !== stats.last_date
-                ? ` – ${formatDate(stats.last_date)}`
-                : ""}
-            </div>
+            <DateRangeStat firstDate={stats.first_date} lastDate={stats.last_date} />
             <div className="op-stat-label">date range</div>
           </div>
         </div>
