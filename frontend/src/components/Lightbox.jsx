@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { photoUrl } from "../api.js";
+import RatingSelect from "./RatingSelect.jsx";
 
 /** Full-size overlay for a spot's photos — always serves the original (photo.path,
  * under /originals/...), never a derivative. Arrow keys / on-screen buttons move
  * between the spot's photos, Escape closes. */
-export default function Lightbox({ photos, index, onClose, onNavigate }) {
+export default function Lightbox({ photos, index, onClose, onNavigate, onRate }) {
   const photo = photos[index];
 
   useEffect(() => {
@@ -47,6 +48,11 @@ export default function Lightbox({ photos, index, onClose, onNavigate }) {
           <span className="lightbox-count">
             {index + 1} / {photos.length}
           </span>
+          {onRate && (
+            <span className="lightbox-rating">
+              Rating <RatingSelect value={photo.rating} onChange={(rating) => onRate(photo.id, rating)} />
+            </span>
+          )}
           <a className="lightbox-download" href={src} download>
             ⭳ Download original
           </a>

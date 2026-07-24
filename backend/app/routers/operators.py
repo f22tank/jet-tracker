@@ -56,9 +56,13 @@ def read(operator_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{operator_id}", response_model=schemas.OperatorOut)
 def update(operator_id: int, update: schemas.OperatorUpdate, db: Session = Depends(get_db)):
-    """Only the bio is editable here — see schemas.OperatorUpdate."""
+    """Full inline editing — see schemas.OperatorUpdate."""
     operator = _get_operator_or_404(db, operator_id)
-    operator = crud.update_operator_fields(db, operator, update)
+    try:
+        operator = crud.update_operator_fields(db, operator, update)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="An operator with that name already exists")
     return crud.to_operator_out(db, operator)
 
 

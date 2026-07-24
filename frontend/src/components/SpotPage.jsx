@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, fetchSpot, mergeSpot, photoUrl, updateSpotDate, updateSpotFields } from "../api.js";
+import { ApiError, fetchSpot, mergeSpot, photoUrl, updatePhotoRating, updateSpotDate, updateSpotFields } from "../api.js";
 import { formatDate } from "../format.js";
 import AircraftTypeLine from "./AircraftTypeLine.jsx";
 import CollisionDialog from "./CollisionDialog.jsx";
@@ -8,6 +8,7 @@ import Lightbox from "./Lightbox.jsx";
 import LocationField from "./LocationField.jsx";
 import MiniMap from "./MiniMap.jsx";
 import OperatorField from "./OperatorField.jsx";
+import RatingSelect from "./RatingSelect.jsx";
 import SpotEditModal from "./SpotEditModal.jsx";
 
 export default function SpotPage({ spotId: initialSpotId }) {
@@ -82,6 +83,14 @@ export default function SpotPage({ spotId: initialSpotId }) {
   async function setCover(photoId) {
     const updated = await updateSpotFields(spotId, { cover_photo_id: photoId });
     setSpot(updated);
+  }
+
+  async function setRating(photoId, rating) {
+    const updated = await updatePhotoRating(photoId, rating);
+    setSpot((prev) => ({
+      ...prev,
+      photos: prev.photos.map((p) => (p.id === photoId ? { ...p, rating: updated.rating } : p)),
+    }));
   }
 
   async function setLocation(update) {
@@ -277,6 +286,9 @@ export default function SpotPage({ spotId: initialSpotId }) {
                       {p.aperture} · {p.shutter} · {p.iso}
                     </b>
                   </div>
+                  <div className="thumb-rating" onClick={(e) => e.stopPropagation()}>
+                    <RatingSelect value={p.rating} onChange={(rating) => setRating(p.id, rating)} compact />
+                  </div>
                 </div>
               ))}
               <div className="add-photos-tile" title="Upload flow lives in the tray, not this page">
@@ -337,6 +349,7 @@ export default function SpotPage({ spotId: initialSpotId }) {
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
+          onRate={setRating}
         />
       )}
 

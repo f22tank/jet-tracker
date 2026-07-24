@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas, storage
@@ -45,9 +46,13 @@ def read(manufacturer_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{manufacturer_id}", response_model=schemas.ManufacturerOut)
 def update(manufacturer_id: int, update: schemas.ManufacturerUpdate, db: Session = Depends(get_db)):
-    """Country and the freeform notes/overview are editable on the manufacturer page."""
+    """Name, country, and the freeform notes/overview are editable on the manufacturer page."""
     manufacturer = _get_manufacturer_or_404(db, manufacturer_id)
-    manufacturer = crud.update_manufacturer_fields(db, manufacturer, update)
+    try:
+        manufacturer = crud.update_manufacturer_fields(db, manufacturer, update)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A manufacturer with that name already exists")
     return crud.to_manufacturer_out(db, manufacturer)
 
 

@@ -98,6 +98,13 @@ export function fetchTray() {
   return request("/api/photos/tray");
 }
 
+export function updatePhotoRating(photoId, rating) {
+  return request(`/api/photos/${photoId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ rating }),
+  });
+}
+
 /** The Upload tab's "Needs attention" view — spots missing location,
  * manufacturer, type, or aircraft identity. */
 export function fetchIncompleteSpots() {

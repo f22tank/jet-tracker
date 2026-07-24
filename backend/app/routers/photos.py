@@ -86,6 +86,16 @@ def list_tray(db: Session = Depends(get_db)):
     ]
 
 
+@router.patch("/{photo_id}", response_model=schemas.PhotoOut)
+def update_photo(photo_id: int, update: schemas.PhotoUpdate, db: Session = Depends(get_db)):
+    """Rating only for now — storage and editing, no dependent sorting/filtering yet."""
+    photo = db.get(models.Photo, photo_id)
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    photo = crud.update_photo(db, photo, update)
+    return crud.to_photo_out(photo)
+
+
 @router.post("/resolve", response_model=schemas.SpotOut)
 def resolve_photos(resolve: schemas.PhotoResolve, db: Session = Depends(get_db)):
     """Assign photo_ids to the spot for (aircraft, date), creating the aircraft

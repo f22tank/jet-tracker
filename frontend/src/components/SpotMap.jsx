@@ -78,7 +78,14 @@ function buildPopupContent(group) {
  * {} for the big map, {aircraft_id} or {operator_id} for the per-page placements).
  * Owns its own filter state, server-side fetch, and cluster/heat toggle — every
  * placement is just a different scope, not a different component. */
-export default function SpotMap({ scope = {}, hiddenFilters = [], defaultFiltersOpen = false, emptyMessage, height }) {
+export default function SpotMap({
+  scope = {},
+  hiddenFilters = [],
+  defaultFiltersOpen = false,
+  emptyMessage,
+  height,
+  overlayControls = false,
+}) {
   const mapElRef = useRef(null);
   const mapRef = useRef(null);
   const clusterLayerRef = useRef(null);
@@ -122,7 +129,10 @@ export default function SpotMap({ scope = {}, hiddenFilters = [], defaultFilters
   // Map instance — created once.
   useEffect(() => {
     if (mapRef.current || !mapElRef.current) return;
-    const map = L.map(mapElRef.current, { center: [39, -98], zoom: 4 });
+    // Zoom control moved to bottom-right — overlay mode floats a toolbar over the
+    // top-left corner (see .spot-map--overlay), and this keeps it clear there too.
+    const map = L.map(mapElRef.current, { center: [39, -98], zoom: 4, zoomControl: false });
+    L.control.zoom({ position: "bottomright" }).addTo(map);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
@@ -195,7 +205,7 @@ export default function SpotMap({ scope = {}, hiddenFilters = [], defaultFilters
   const anyFilterActive = category || operatorId || aircraftType || dateFrom || dateTo || locationId;
 
   return (
-    <div className="spot-map">
+    <div className={`spot-map${overlayControls ? " spot-map--overlay" : ""}`}>
       <div className="map-toolbar">
         <div className="mode-switch">
           <button type="button" className={viewMode === "cluster" ? "active" : ""} onClick={() => setViewMode("cluster")}>

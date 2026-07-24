@@ -48,7 +48,10 @@ def wait_for_db(retries: int = 10, delay: float = 3.0) -> None:
 # instead. Portable across the sqlite (dev) and MariaDB (prod) backends this
 # app targets.
 _NEW_COLUMNS = {
-    "photos": [("original_filename", "VARCHAR(255) NULL")],
+    "photos": [
+        ("original_filename", "VARCHAR(255) NULL"),
+        ("rating", "INTEGER NULL"),
+    ],
     "locations": [
         ("cover_image", "VARCHAR(500) NULL"),
         ("cover_image_thumbnail", "VARCHAR(500) NULL"),

@@ -69,7 +69,17 @@ def to_photo_out(photo: models.Photo) -> schemas.PhotoOut:
         gps_lat=photo.gps_lat,
         gps_lon=photo.gps_lon,
         taken_at=photo.taken_at,
+        rating=photo.rating,
     )
+
+
+def update_photo(db: Session, photo: models.Photo, update: schemas.PhotoUpdate) -> models.Photo:
+    data = update.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(photo, field, value)
+    db.commit()
+    db.refresh(photo)
+    return photo
 
 
 def _recent_photos(spots: list[models.Spot], limit: int = 4) -> list[schemas.PhotoOut]:
@@ -408,10 +418,54 @@ def list_operators(db: Session, type_: models.OperatorType) -> list[schemas.Oper
     return result
 
 
+_AIRLINE_DETAIL_FIELDS = {"iata", "icao", "callsign"}
+_UNIT_DETAIL_FIELDS = {"branch", "tail_code", "home_base"}
+
+
 def update_operator_fields(db: Session, operator: models.Operator, update: schemas.OperatorUpdate) -> models.Operator:
+    """name/parent_operator_id/bio set directly. type-specific fields land on
+    airline_detail or unit_detail depending on the operator's (possibly
+    just-changed) type. Switching `type` drops the old detail row and starts a
+    fresh empty one for the new type, mirroring create_operator's branch."""
     data = update.model_dump(exclude_unset=True)
-    for field, value in data.items():
+    detail_fields = _AIRLINE_DETAIL_FIELDS | _UNIT_DETAIL_FIELDS
+    direct = {k: v for k, v in data.items() if k not in detail_fields and k != "type"}
+    for field, value in direct.items():
         setattr(operator, field, value)
+
+    if "type" in data and data["type"] != operator.type:
+        if operator.airline_detail is not None:
+            db.delete(operator.airline_detail)
+        if operator.unit_detail is not None:
+            db.delete(operator.unit_detail)
+        operator.type = data["type"]
+        db.flush()
+        if operator.type == models.OperatorType.airline:
+            db.add(models.AirlineDetail(operator_id=operator.id))
+        else:
+            db.add(models.UnitDetail(operator_id=operator.id))
+        db.flush()
+        db.refresh(operator)
+
+    detail_updates = {k: v for k, v in data.items() if k in detail_fields}
+    if detail_updates:
+        if operator.type == models.OperatorType.airline:
+            if operator.airline_detail is None:
+                db.add(models.AirlineDetail(operator_id=operator.id))
+                db.flush()
+                db.refresh(operator)
+            for k, v in detail_updates.items():
+                if k in _AIRLINE_DETAIL_FIELDS:
+                    setattr(operator.airline_detail, k, v)
+        else:
+            if operator.unit_detail is None:
+                db.add(models.UnitDetail(operator_id=operator.id))
+                db.flush()
+                db.refresh(operator)
+            for k, v in detail_updates.items():
+                if k in _UNIT_DETAIL_FIELDS:
+                    setattr(operator.unit_detail, k, v)
+
     db.commit()
     db.refresh(operator)
     return operator

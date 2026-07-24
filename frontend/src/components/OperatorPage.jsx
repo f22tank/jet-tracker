@@ -7,6 +7,7 @@ import AssetImageUpload from "./AssetImageUpload.jsx";
 import { formatTypeLine } from "./AircraftTypeLine.jsx";
 import DateRangeStat from "./DateRangeStat.jsx";
 import EditableField from "./EditableField.jsx";
+import ParentOperatorField from "./ParentOperatorField.jsx";
 import SpotMap from "./SpotMap.jsx";
 
 const doughnutOptions = {
@@ -99,8 +100,8 @@ export default function OperatorPage({ operatorId }) {
     setOperator((prev) => ({ ...prev, image: updated.image }));
   }
 
-  async function saveBio(value) {
-    const updated = await updateOperator(operatorId, { bio: value });
+  async function saveField(field, value) {
+    const updated = await updateOperator(operatorId, { [field]: value });
     setOperator(updated);
   }
 
@@ -135,6 +136,42 @@ export default function OperatorPage({ operatorId }) {
 
       <div className="ledger" style={{ marginTop: 24 }}>
         <div className="ledger-head">
+          <h2>Details</h2>
+        </div>
+        <div className="drow-grid" style={{ padding: "4px 18px" }}>
+          <EditableField label="Name" value={operator.name} placeholder="add name" onSave={(v) => saveField("name", v)} />
+          <div className="drow">
+            <span className="k">Type</span>
+            <span className="v" style={{ cursor: "default" }}>
+              <select value={operator.type} onChange={(e) => saveField("type", e.target.value)}>
+                <option value="airline">Airline</option>
+                <option value="military_unit">Military Unit</option>
+              </select>
+            </span>
+          </div>
+          <ParentOperatorField
+            parent={operator.parent}
+            type={operator.type}
+            onSave={(id) => saveField("parent_operator_id", id)}
+          />
+          {operator.type === "airline" ? (
+            <>
+              <EditableField label="IATA" value={operator.iata} placeholder="add IATA" mono onSave={(v) => saveField("iata", v)} />
+              <EditableField label="ICAO" value={operator.icao} placeholder="add ICAO" mono onSave={(v) => saveField("icao", v)} />
+              <EditableField label="Callsign" value={operator.callsign} placeholder="add callsign" onSave={(v) => saveField("callsign", v)} />
+            </>
+          ) : (
+            <>
+              <EditableField label="Branch" value={operator.branch} placeholder="add branch" onSave={(v) => saveField("branch", v)} />
+              <EditableField label="Tail code" value={operator.tail_code} placeholder="add tail code" mono onSave={(v) => saveField("tail_code", v)} />
+              <EditableField label="Home base" value={operator.home_base} placeholder="add home base" onSave={(v) => saveField("home_base", v)} />
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
           <h2>Stats</h2>
         </div>
         <div className="op-stats">
@@ -150,6 +187,21 @@ export default function OperatorPage({ operatorId }) {
             <DateRangeStat firstDate={stats.first_date} lastDate={stats.last_date} />
             <div className="op-stat-label">date range</div>
           </div>
+        </div>
+      </div>
+
+      <div className="ledger" style={{ marginTop: 24 }}>
+        <div className="ledger-head">
+          <h2>Bio</h2>
+        </div>
+        <div style={{ padding: "14px 18px" }}>
+          <EditableField
+            block
+            value={operator.bio}
+            placeholder="add a write-up — history, notable aircraft, whatever"
+            onSave={(v) => saveField("bio", v)}
+            multiline
+          />
         </div>
       </div>
 
@@ -188,21 +240,6 @@ export default function OperatorPage({ operatorId }) {
           )}
         </div>
       )}
-
-      <div className="ledger" style={{ marginTop: 24 }}>
-        <div className="ledger-head">
-          <h2>Bio</h2>
-        </div>
-        <div style={{ padding: "14px 18px" }}>
-          <EditableField
-            block
-            value={operator.bio}
-            placeholder="add a write-up — history, notable aircraft, whatever"
-            onSave={saveBio}
-            multiline
-          />
-        </div>
-      </div>
 
       {operator.recent_photos.length > 0 && (
         <div className="ledger" style={{ marginTop: 24 }}>

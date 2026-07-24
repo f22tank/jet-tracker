@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .models import AircraftCategory, GAConfiguration, GARole, OperatorType
 
@@ -213,6 +213,7 @@ class ManufacturerOut(BaseModel):
 
 
 class ManufacturerUpdate(BaseModel):
+    name: Optional[str] = None
     country: Optional[str] = None
     notes: Optional[str] = None
 
@@ -268,6 +269,14 @@ class PhotoOut(BaseModel):
     gps_lat: Optional[float] = None
     gps_lon: Optional[float] = None
     taken_at: Optional[datetime.datetime] = None
+    rating: Optional[int] = None
+
+
+class PhotoUpdate(BaseModel):
+    """Storage/editing only for now — see PHOTO_RATING notes; no sorting, filtering,
+    or 'best of' surfacing yet. null explicitly clears a rating back to unrated."""
+
+    rating: Optional[int] = Field(default=None, ge=1, le=10)
 
 
 class OperatorSpotEntry(BaseModel):
@@ -315,10 +324,24 @@ class OperatorOut(BaseModel):
 
 
 class OperatorUpdate(BaseModel):
-    """Only the bio is editable inline on the operator page — everything else
-    (name/iata/etc.) is set at creation time via the tray's tag-new-operator flow."""
+    """Full inline editing on the operator page. name/type/parent_operator_id are
+    direct Operator columns. iata/icao/callsign and branch/tail_code/home_base land
+    on the matching type-specific detail table — see crud.update_operator_fields.
+    Changing `type` swaps which detail table is in play; the old one is dropped and
+    a fresh (empty) one created for the new type, same as at creation time."""
 
+    name: Optional[str] = None
+    type: Optional[OperatorType] = None
+    parent_operator_id: Optional[int] = None
     bio: Optional[str] = None
+
+    iata: Optional[str] = None
+    icao: Optional[str] = None
+    callsign: Optional[str] = None
+
+    branch: Optional[str] = None
+    tail_code: Optional[str] = None
+    home_base: Optional[str] = None
 
 
 class OperatorListEntry(BaseModel):

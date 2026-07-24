@@ -219,6 +219,7 @@ class Photo(Base):
     gps_lat = Column(Float, nullable=True)
     gps_lon = Column(Float, nullable=True)
     taken_at = Column(DateTime, nullable=True)
+    rating = Column(Integer, nullable=True)
 
     spot = relationship("Spot", back_populates="photos", foreign_keys=[spot_id])
 

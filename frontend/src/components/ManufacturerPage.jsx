@@ -74,6 +74,12 @@ export default function ManufacturerPage({ manufacturerId }) {
         </div>
         <div style={{ padding: "4px 18px" }}>
           <EditableField
+            label="Name"
+            value={manufacturer.name}
+            placeholder="add name"
+            onSave={(v) => saveField("name", v)}
+          />
+          <EditableField
             label="Country"
             value={manufacturer.country}
             placeholder="add country"

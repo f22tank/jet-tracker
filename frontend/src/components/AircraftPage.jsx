@@ -58,8 +58,19 @@ export default function AircraftPage({ aircraftId }) {
         <div className="reg-row">
           <div className="reg mono">{aircraft.identifier}</div>
           <div className="date-block">
-            <span className="dl">{aircraft.category === "ga" ? "General Aviation" : aircraft.category === "military" ? "Military" : "Commercial"}</span>
+            <span className="dl">Category</span>
+            <span className="d" style={{ fontSize: 20 }}>
+              {aircraft.category === "ga" ? "General Aviation" : aircraft.category === "military" ? "Military" : "Commercial"}
+            </span>
           </div>
+          {heroSpot && (
+            <div className="date-block">
+              <span className="dl">Spotted</span>
+              <span className="d" style={{ fontSize: 20 }}>
+                {formatDate(heroSpot.date)}
+              </span>
+            </div>
+          )}
         </div>
         <AircraftTypeLine aircraft={aircraft} />
       </header>

@@ -180,6 +180,14 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .thumb.cover-sel .star{color:var(--tarmac);background:var(--accent);border-color:var(--accent)}
 .thumb .meta{padding:8px 9px;font-family:'Spline Sans Mono';font-size:10px;color:var(--steel);line-height:1.6}
 .thumb .meta b{color:var(--aluminum);font-weight:500}
+.thumb-rating{padding:0 9px 8px}
+
+.rating-select{
+  background:var(--panel-2);border:1px solid var(--hairline);color:var(--aluminum);
+  font-family:'Spline Sans Mono';font-size:12px;padding:4px 6px;border-radius:3px;cursor:pointer;
+}
+.rating-select--compact{font-size:11px;padding:2px 4px;width:100%}
+.lightbox-rating{display:flex;align-items:center;gap:6px;color:var(--steel)}
 
 .ledger{margin-top:32px;border:1px solid var(--hairline)}
 .ledger-head{padding:14px 18px;border-bottom:1px solid var(--hairline);display:flex;align-items:baseline;justify-content:space-between;background:var(--panel)}
@@ -592,9 +600,29 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
   .all-spots-head{flex-direction:column;align-items:flex-start;gap:10px}
 }
 
+/* ---- main map page: full viewport width, not capped by .wrap ---- */
+.map-page{padding:14px 16px 0}
+.map-page-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.map-page-head h1{font-family:'Archivo';font-size:18px;font-weight:800;letter-spacing:.04em}
+.map-page-head .count{color:var(--steel);font-size:12px}
+
 /* ---- spot map (reusable: big map, aircraft page, operator page) ---- */
 .spot-map{margin-top:12px}
 .map-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+
+/* Overlay mode (the main Map page): toolbar/filters float on top of the canvas
+   instead of pushing it down, so the map itself can fill the available height.
+   Leaflet's own zoom control is relocated to bottom-right (see SpotMap.jsx) to
+   stay clear of this top bar. */
+.spot-map--overlay{position:relative}
+.spot-map--overlay .map-toolbar{
+  position:absolute;top:10px;left:10px;right:10px;z-index:850;margin-bottom:0;
+  background:rgba(28,33,38,.85);backdrop-filter:blur(4px);
+  border:1px solid var(--hairline);border-radius:6px;padding:8px 10px;
+}
+.spot-map--overlay .map-filters{
+  position:absolute;top:58px;left:10px;z-index:850;margin-bottom:0;max-width:calc(100% - 20px);
+}
 .filters-toggle{
   background:transparent;border:1px solid var(--hairline);color:var(--steel);font-size:11px;
   padding:5px 10px;border-radius:4px;cursor:pointer;
@@ -613,7 +641,7 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
   font-family:'Spline Sans Mono';font-size:11px;padding:6px 10px;border-radius:3px;cursor:pointer;
 }
 .map-canvas{
-  height:420px;width:100%;border-radius:5px;overflow:hidden;border:1px solid var(--hairline);
+  height:520px;min-height:420px;width:100%;border-radius:5px;overflow:hidden;border:1px solid var(--hairline);
   background:#12161a;
 }
 .map-empty{padding:16px 0}
@@ -628,8 +656,14 @@ header.spot{padding:26px 0 20px;border-bottom:1px solid var(--hairline)}
 .map-popup .mp-list{display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto}
 
 /* ---- lightbox (full-size original, spotting page) ---- */
+/* Leaflet's own panes/controls run up to z-index:1000 (map panes in the 400s,
+   .leaflet-top/.leaflet-bottom controls at 1000) — any page with a map (the
+   location mini-map, aircraft/operator/location per-page maps, the main map)
+   needs the lightbox comfortably above that range or the map paints through
+   the dimmed backdrop. Close/nav buttons are fixed-position children with no
+   z-index of their own, so they inherit this stacking level too. */
 .lightbox-backdrop{
-  position:fixed;inset:0;background:rgba(8,10,12,.94);z-index:60;
+  position:fixed;inset:0;background:rgba(8,10,12,.94);z-index:1200;
   display:flex;align-items:center;justify-content:center;
 }
 .lightbox-close{
